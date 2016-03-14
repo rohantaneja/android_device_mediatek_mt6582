@@ -1,0 +1,87 @@
+#
+# system.prop for mediatek mt6582 - rohan build
+#
+
+ro.hardware=mt6582
+rild.libpath=/system/lib/mtk-ril.so
+rild.libargs=-d /dev/ttyC0
+
+# MTK, Infinity, 20090720 {
+wifi.interface=wlan0
+# MTK, Infinity, 20090720 }
+
+# MTK, mtk03034, 20101210 {
+ro.mediatek.wlan.wsc=1
+# MTK, mtk03034 20101210}
+# MTK, mtk03034, 20110318 {
+ro.mediatek.wlan.p2p=1
+# MTK, mtk03034 20110318}
+
+# MTK, mtk03034, 20101213 {
+mediatek.wlan.ctia=0
+# MTK, mtk03034 20101213}
+
+#
+wifi.tethering.interface=ap0
+#
+
+ro.opengles.version=131072
+wifi.direct.interface=p2p0
+
+service.adb.root=1
+ro.sf.lcd_density=320
+
+persist.mtk.aee.aed=on
+persist.radio.fd.counter=15
+persist.radio.fd.off.counter=5
+persist.radio.fd.r8.counter=15
+persist.radio.fd.off.r8.counter=5
+
+fmradio.driver.enable=1
+
+mux.debuglog.enable=0
+
+ril.specific.sm_cause=0
+ril.external.md=0
+ril.current.share_modem=2
+ril.first.md=1
+ril.flightmode.poweroffMD=1
+ril.telephony.mode=0
+ril.radiooff.poweroffMD=0
+ril.active.md=0
+ro.telephony.sim.count=2
+
+persist.radio.default.sim=0
+persist.radio.multisim.config=dsds
+persist.md.perm.checked=to_upgrade
+persist.gemini.sim_num=2
+
+ro.telephony.ril_class=MediaTekRIL
+
+ro.telephony.ril.config=fakeiccid
+
+
+# USB MTP WHQL
+ro.sys.usb.mtp.whql.enable=0
+
+# Power off opt in IPO
+sys.ipo.pwrdncap=2
+
+ro.sys.usb.storage.type=mtp,mass_storage
+
+# USB BICR function
+ro.sys.usb.bicr=yes
+
+# USB Charge only function
+ro.sys.usb.charging.only=no
+
+# audio
+ro.camera.sound.forced=0
+ro.audio.silent=0
+
+ro.zygote.preload.enable=0
+
+ro.boot.selinux=disable
+
+# Disable dirty region for Mali
+debug.hwui.render_dirty_regions=false
