@@ -117,3 +117,6 @@ BOARD_SEPOLICY_UNION := \
        system.te \
        netd.te \
        file_contexts
+       
+# Hack for build
+$(shell mkdir -p $(OUT)/obj/KERNEL_OBJ/usr)
