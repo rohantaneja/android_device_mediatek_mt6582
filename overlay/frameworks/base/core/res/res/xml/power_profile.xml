@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<device name="Android">
+    <item name="none">0</item>
+    <!-- screen values are most likely very wrong:
+	 copied from Fairphone1 -->
+    <item name="screen.on">206.1</item>
+    <item name="screen.full">237.4</item>
+    <item name="bluetooth.active">26.2</item>
+    <item name="bluetooth.on">4.3</item>
+    <item name="wifi.on">4.1</item>
+    <item name="wifi.active">90.8</item>
+    <item name="wifi.scan">9.5</item>
+    <item name="dsp.audio">70.75</item>
+    <item name="dsp.video">351</item>
+    <item name="radio.active">31.7</item>
+    <item name="radio.scanning">189.6</item>
+    <item name="gps.on">0.2</item>
+    <array name="radio.on">
+        <value>11.9</value>
+        <value>11.9</value>
+    </array>
+    <array name="cpu.speeds">
+        <value>1209000</value>
+        <value>988000</value>
+        <value>754000</value>
+        <value>497250</value>
+    </array>
+    <item name="cpu.idle">7.9</item>
+    <array name="cpu.active">
+        <value>0.1</value>
+        <value>0.1</value>
+        <value>0.1</value>
+        <value>0.1</value>
+    </array>
+    <item name="battery.capacity">3200</item>
+</device>

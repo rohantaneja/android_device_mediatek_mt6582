@@ -1,0 +1,423 @@
+# Copyright (C) 2012 The Android Open Source Project
+#
+# IMPORTANT: Do not create world writable files or directories.
+# This is a common source of Android security bugs.
+#
+import /init.environ.rc
+import init.fuse.rc
+import init.aee.rc
+
+on early-init
+    # Set init and its forked children's oom_adj.
+    write /proc/1/oom_score_adj -1000
+
+    # Apply strict SELinux checking of PROT_EXEC on mmap/mprotect calls.
+    write /sys/fs/selinux/checkreqprot 0
+
+    # Set the security context for the init process.
+    # This should occur before anything else (e.g. ueventd) is started.
+    setcon u:r:init:s0
+
+    # Set the security context of /adb_keys if present.
+    restorecon /adb_keys
+
+    start ueventd
+
+# create mountpoints
+    mkdir /mnt 0775 root system
+
+on init
+    sysclktz 0
+
+loglevel 5
+
+# Backward compatibility
+    symlink /system/etc /etc
+    symlink /sys/kernel/debug /d
+
+# Right now vendor lives on the same filesystem as system,
+# but someday that may change.
+    symlink /system/vendor /vendor
+
+# Create cgroup mount point for cpu accounting
+    mkdir /acct
+    mount cgroup none /acct cpuacct
+    mkdir /acct/uid
+
+    mkdir /system
+    mkdir /data 0771 system system
+    mkdir /cache 0770 system cache
+    mkdir /config 0500 root root
+
+    mkdir /protect_f 0771 system system
+    mkdir /protect_s 0771 system system
+    #Create CIP mount point
+    mkdir /custom
+
+    # See storage config details at http://source.android.com/tech/storage/
+    mkdir /mnt/shell 0700 shell shell
+    mkdir /mnt/media_rw 0700 media_rw media_rw
+    mkdir /storage 0751 root sdcard_r
+
+    mkdir /mnt/cd-rom 0000 system system
+
+    # Directory for putting things only root should see.
+    mkdir /mnt/secure 0700 root root
+
+    # Directory for staging bindmounts
+    mkdir /mnt/secure/staging 0700 root root
+
+    # Directory-target for where the secure container
+    # imagefile directory will be bind-mounted
+    mkdir /mnt/secure/asec  0700 root root
+
+    # Secure container public mount points.
+    mkdir /mnt/asec  0700 root system
+    mount tmpfs tmpfs /mnt/asec mode=0755,gid=1000
+
+    # Filesystem image public mount points.
+    mkdir /mnt/obb 0700 root system
+    mount tmpfs tmpfs /mnt/obb mode=0755,gid=1000
+
+    write /proc/sys/kernel/panic_on_oops 1
+    write /proc/sys/kernel/hung_task_timeout_secs 0
+    write /proc/cpu/alignment 4
+    write /proc/sys/kernel/sched_latency_ns 10000000
+    write /proc/sys/kernel/sched_wakeup_granularity_ns 2000000
+    write /proc/sys/kernel/sched_compat_yield 1
+
+# Healthd can trigger a full boot from charger mode by signaling this
+# property when the power button is held.
+on property:sys.boot_from_charger_mode=1
+    class_stop charger
+    trigger late-init
+
+# Load properties from /system/ + /factory after fs mount.
+on load_all_props_action
+    load_all_props
+
+# Mount filesystems and start core system services.
+on late-init
+    trigger early-fs
+    trigger fs
+    trigger post-fs
+    trigger post-fs-data
+
+    # Load properties from /system/ + /factory after fs mount. Place
+    # this in another action so that the load will be scheduled after the prior
+    # issued fs triggers have completed.
+    trigger load_all_props_action
+
+    trigger early-boot
+    trigger boot
+
+on fs
+    write /proc/bootprof "INIT:Mount_START"
+    mount_all /fstab.mt6582
+    write /proc/bootprof "INIT:Mount_END"
+
+on post-fs
+    # once everything is setup, no need to modify /
+    mount rootfs rootfs / ro remount
+
+    # We chown/chmod /cache again so because mount is run as root + defaults
+    chown system cache /cache
+    chmod 0770 /cache
+    # We restorecon /cache in case the cache partition has been reset.
+    restorecon_recursive /cache
+
+    chown system system /protect_f
+    chmod 0771 /protect_f
+
+    chown system system /protect_s
+    chmod 0771 /protect_s
+
+    #change permissions on kmsg & sysrq-trigger so bugreports can grab kthread stacks
+    chown root system /proc/kmsg
+    chmod 0440 /proc/kmsg
+
+    # make the selinux kernel policy world-readable
+    chmod 0444 /sys/fs/selinux/policy
+
+    # create the lost+found directories, so as to enforce our permissions
+    mkdir /cache/lost+found 0770 root root
+
+on post-fs-data
+    # We chown/chmod /data again so because mount is run as root + defaults
+    chown system system /data
+    chmod 0771 /data
+    # We restorecon /data in case the userdata partition has been reset.
+    restorecon /data
+
+
+    # create basic filesystem structure
+    mkdir /data/nvram 2770 root system
+    mkdir /data/misc 01771 system misc
+    mkdir /data/misc/bluetoothd 0770 bluetooth bluetooth
+    mkdir /data/misc/bluetooth 0770 system system
+    mkdir /data/misc/keystore 0700 keystore keystore
+    mkdir /data/misc/keychain 0771 system system
+    mkdir /data/misc/vpn 0770 system vpn
+    mkdir /data/misc/systemkeys 0700 system system
+    # give system access to wpa_supplicant.conf for backup and restore
+    mkdir /data/misc/wifi 0770 wifi wifi
+    chmod 0660 /data/misc/wifi/wpa_supplicant.conf
+    chmod 0660 /data/misc/wifi/p2p_supplicant.conf
+    mkdir /data/local 0751 root root
+    # For security reasons, /data/local/tmp should always be empty.
+    # Do not place files or directories in /data/local/tmp
+    mkdir /data/local/tmp 0771 shell shell
+    mkdir /data/data 0771 system system
+    mkdir /data/app-private 0771 system system
+    mkdir /data/app-asec 0700 root root
+    mkdir /data/app 0771 system system
+    mkdir /data/property 0700 root root
+    mkdir /data/ssh 0750 root shell
+    mkdir /data/ssh/empty 0700 root root
+
+    # create the lost+found directories, so as to enforce our permissions
+    mkdir /data/lost+found 0770
+
+    # double check the perms, in case lost+found already exists, and set owner
+    chown root root /data/lost+found
+    chmod 0770 /data/lost+found
+
+    # H264 Decoder
+    chmod 777 /dev/MT6516_H264_DEC
+
+    # Internal SRAM Driver
+    chmod 777 /dev/MT6516_Int_SRAM
+
+    # MM QUEUE Driver
+    chmod 777 /dev/MT6516_MM_QUEUE
+
+    # MPEG4 Decoder
+    chmod 777 /dev/MT6516_MP4_DEC
+
+    # MPEG4 Encoder
+    chmod 777 /dev/MT6516_MP4_ENC
+
+    # OpenCORE proxy config
+    chmod 0666 /data/http-proxy-cfg
+
+    # OpenCORE player config
+    chmod 0666 /etc/player.cfg
+
+    # WiFi
+    mkdir /data/misc/wifi 0770 system wifi
+    mkdir /data/misc/wifi/sockets 0770 system wifi
+    mkdir /data/misc/dhcp 0770 dhcp dhcp
+    chown dhcp dhcp /data/misc/dhcp
+    chmod 0660 /sys/class/rfkill/rfkill1/state
+    chown system system /sys/class/rfkill/rfkill1/state
+    # Turn off wifi by default
+    write /sys/class/rfkill/rfkill1/state 0
+
+
+
+    #otp
+    chmod 0660 /dev/otp
+    chown root system /dev/otp
+
+    # Touch Panel
+    chown system system /sys/touchpanel/calibration
+    chmod 0660 /sys/touchpanel/calibration
+
+    chmod 0777 /dev/pmem_multimedia
+    chmod 0777 /dev/mt6516-isp
+    chmod 0777 /dev/mt6516-IDP
+    chmod 0777 /dev/mt9p012
+    chmod 0777 /dev/mt6516_jpeg
+    chmod 0777 /dev/FM50AF
+
+
+
+    # RTC
+    mkdir /data/misc/rtc 0770 system system
+
+
+    # M4U
+    #insmod /system/lib/modules/m4u.ko
+    #mknod /dev/M4U_device c 188 0
+    chmod 0444 /dev/M4U_device
+
+    # Sensor
+    chmod 0666 /dev/sensor
+
+    # GPIO
+    chmod 0666 /dev/mtgpio
+
+    # Android SEC related device nodes
+    chmod 0660 /dev/sec
+    chown root system /dev/sec
+
+    # device info interface
+    chmod 0440 /dev/devmap
+    chown root system /dev/devmap
+
+
+    #change partition permission
+    exec /system/etc/partition_permission.sh
+
+    chmod 0666 /dev/exm0
+
+    # Separate location for storing security policy files on data
+    mkdir /data/security 0711 system system
+
+    # Reload policy from /data/security if present.
+    setprop selinux.reload_policy 1
+
+    # Set SELinux security contexts on upgrade or policy update.
+    restorecon_recursive /data
+
+    # If there is no fs-post-data action in the init.<device>.rc file, you
+    # must uncomment this line, otherwise encrypted filesystems
+    # won't work.
+    # Set indication (checked by vold) that we have finished this action
+    setprop vold.post_fs_data_done 1
+
+on boot
+
+
+   chown root /remount.sh
+   chmod 700 /remount.sh
+   exec /remount.sh
+
+# basic network init
+    ifup lo
+    hostname localhost
+    domainname localdomain
+
+    class_start default
+    class_start core
+
+on nonencrypted
+    class_start main
+    class_start late_start
+
+on property:vold.decrypt=trigger_default_encryption
+    start defaultcrypto
+
+on property:vold.decrypt=trigger_encryption
+    start surfaceflinger
+    start encrypt
+
+on property:vold.decrypt=trigger_reset_main
+    class_reset main
+
+on property:vold.decrypt=trigger_load_persist_props
+    load_persist_props
+
+on property:vold.decrypt=trigger_post_fs_data
+    trigger post-fs-data
+
+on property:vold.decrypt=trigger_restart_min_framework
+    class_start main
+
+on property:vold.decrypt=trigger_restart_framework
+    start nvram_daemon
+    class_start main
+    class_start late_start
+    start permission_check
+
+on property:vold.decrypt=trigger_shutdown_framework
+    class_reset late_start
+    class_reset main
+
+service ueventd /sbin/ueventd
+    class core
+    critical
+    seclabel u:r:ueventd:s0
+
+service logd /system/bin/logd
+    class core
+    socket logd stream 0666 logd logd
+    socket logdr seqpacket 0666 logd logd
+    socket logdw dgram 0222 logd logd
+    seclabel u:r:logd:s0
+
+service console /system/bin/sh
+    class core
+    console
+    disabled
+    user shell
+    group shell log
+    seclabel u:r:shell:s0
+
+on property:sys.powerctl=*
+    powerctl ${sys.powerctl}
+
+on property:ro.debuggable=1
+    start console
+
+# adbd is controlled via property triggers in init.<platform>.usb.rc
+service adbd /sbin/adbd --root_seclabel=u:r:su:s0
+    class core
+    socket adbd stream 660 system system
+    disabled
+    seclabel u:r:adbd:s0
+
+service vold /system/bin/vold
+    class core
+    socket vold stream 0660 root mount
+    ioprio be 2
+
+# One shot invocation to deal with encrypted volume.
+service defaultcrypto /system/bin/vdc --wait cryptfs mountdefaultencrypted
+    disabled
+    oneshot
+    # vold will set vold.decrypt to trigger_restart_framework (default
+    # encryption) or trigger_restart_min_framework (other encryption)
+
+# One shot invocation to encrypt unencrypted volumes
+service encrypt /system/bin/vdc --wait cryptfs enablecrypto inplace default
+    disabled
+    oneshot
+    # vold will set vold.decrypt to trigger_restart_framework (default
+    # encryption)
+
+service meta_tst /system/bin/meta_tst
+
+service nvram_daemon /system/bin/nvram_daemon
+    class main
+    user root
+    group system
+    oneshot
+
+service debuggerd /system/bin/debuggerd
+    class main
+
+service debuggerd64 /system/bin/debuggerd64
+    class main
+
+service mobile_log_d /system/bin/mobile_log_d
+    class main
+
+on property:ro.boot.mblogenable=0    
+    stop mobile_log_d    
+
+on property:ro.boot.mblogenable=1
+    start mobile_log_d
+
+#mass_storage,adb,acm
+on property:ro.boot.usbconfig=0
+    write /sys/class/android_usb/android0/iSerial $ro.serialno
+    write /sys/class/android_usb/android0/enable 0
+    write /sys/class/android_usb/android0/idVendor 0e8d
+    write /sys/class/android_usb/android0/idProduct 2006
+    write /sys/class/android_usb/android0/f_acm/instances 1
+    write /sys/class/android_usb/android0/functions mass_storage,adb,acm
+    write /sys/class/android_usb/android0/enable 1
+    start adbd
+
+#acm
+on property:ro.boot.usbconfig=1
+    write /sys/class/android_usb/android0/enable 0
+    write /sys/class/android_usb/android0/iSerial " "
+    write /sys/class/android_usb/android0/idVendor 0e8d
+    write /sys/class/android_usb/android0/idProduct 2007
+    write /sys/class/android_usb/android0/f_acm/instances 1
+    write /sys/class/android_usb/android0/functions acm
+    write /sys/class/android_usb/android0/bDeviceClass 02
+    write /sys/class/android_usb/android0/enable 1
+

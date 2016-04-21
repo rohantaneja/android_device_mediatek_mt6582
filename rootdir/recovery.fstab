@@ -1,0 +1,9 @@
+/dev/misc		/misc		emmc	defaults defaults
+/dev/block/mmcblk0p7	/data		ext4	noatime,nosuid,nodev,barrier=1,data=ordered,nomblk_io_submit,noauto_da_alloc,errors=panic wait,check,encryptable=/dev/block/platform/msm_sdcc.1/by-name/metadata
+/dev/block/mmcblk0p5	/system		ext4	ro,barrier=1                                                    wait
+/dev/block/mmcblk0p6	/cache		ext4	noatime,nosuid,nodev,barrier=1,data=ordered,nomblk_io_submit,noauto_da_alloc,errors=panic wait,check
+/dev/bootimg		/boot		emmc	defaults defaults
+/dev/recovery		/recovery	emmc	defaults defaults
+/dev/block/mmcblk0p8	/storage/sdcard0		vfat	defaults defaults
+/dev/block/mmcblk1	/storage/sdcard1		vfat	defaults defaults
+/dev/block/mmcblk1p1	/storage/sdcard1		vfat	defaults defaults
