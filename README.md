@@ -11,7 +11,7 @@ Storage | 8GB (varies)
 Display | 6.0" 1280 x 720 px (varies)
 Camera  | 8MPx, LED Flash
 
-This branch is for building 6.0 based ROMs.
+This branch is for building 6.0.x based ROMs.
 
 * Compilation
 
@@ -22,3 +22,17 @@ This branch is for building 6.0 based ROMs.
         # source build/envsetup.sh
         
         # brunch cm_mt6582-userdebug
+
+* Credits
+
+        # fire855
+        
+        # ferhung-mtk
+        
+        # hyperion70
+        
+        # ariafan
+        
+        # DerTeufel
+        
+        # all those who initially brought up Android M to MTK
