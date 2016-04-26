@@ -35,7 +35,8 @@ endif
 
 LOCAL_CFLAGS += -DMTK_RIL_MD1
 
-LOCAL_C_INCLUDES := $(KERNEL_HEADERS)
+LOCAL_C_INCLUDES := $(KERNEL_HEADERS) \
+                    prebuilts/ndk/current/platforms/android-21/arch-arm/usr/include
 #LOCAL_LDLIBS := -lpthread
 
 include $(BUILD_EXECUTABLE)
@@ -67,7 +68,8 @@ endif
 
 LOCAL_CFLAGS += -DMTK_RIL_MD2
 
-LOCAL_C_INCLUDES := $(KERNEL_HEADERS)
+LOCAL_C_INCLUDES := $(KERNEL_HEADERS) \
+                    prebuilts/ndk/current/platforms/android-21/arch-arm/usr/include
 #LOCAL_LDLIBS := -lpthread
 
 include $(BUILD_EXECUTABLE)

@@ -19,6 +19,8 @@
 #ifndef _MTK_DRIVER_NL80211_H_
 #define _MTK_DRIVER_NL80211_H_
 
+#include <sys/socket.h>
+
 #ifndef BITS
 /* Eddie */
 /* bits range: for example BITS(16,23) = 0xFF0000

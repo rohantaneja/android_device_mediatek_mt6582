@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2016 The CyanogenMod Project - MediaTek
+# Copyright (C) 2016 The CyanogenMod Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +17,7 @@
 # The gps config appropriate for this device
 $(call inherit-product, device/common/gps/gps_us_supl.mk)
 
-# Full language pack for device
-$(call inherit-product, $(SRC_TARGET_DIR)/product/languages_full.mk)
+LOCAL_PATH := device/mediatek/mt6582
 
 DEVICE_PACKAGE_OVERLAYS += $(LOCAL_PATH)/overlay
 
@@ -94,21 +93,12 @@ PRODUCT_COPY_FILES += \
 # Ramdisk
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/rootdir/fstab.mt6582:root/fstab.mt6582 \
-    $(LOCAL_PATH)/rootdir/init.aee.rc:root/init.aee.rc \
-    $(LOCAL_PATH)/rootdir/init.mt6582.rc:root/init.mt6582.rc \
+    $(LOCAL_PATH)/rootdir/init.mt6592.rc:root/init.mt6582.rc \
     $(LOCAL_PATH)/rootdir/init.modem.rc:root/init.modem.rc \
-    $(LOCAL_PATH)/rootdir/init.recovery.mt6582.rc:root/init.recovery.mt6582.rc \
-    $(LOCAL_PATH)/rootdir/init.mt6582.usb.rc:root/init.mt6582.usb.rc \
-    $(LOCAL_PATH)/rootdir/init.fuse.rc:root/init.fuse.rc \
-    $(LOCAL_PATH)/rootdir/factory_init.project.rc:root/factory_init.project.rc \
-    $(LOCAL_PATH)/rootdir/factory_init.rc:root/factory_init.rc \
-    $(LOCAL_PATH)/rootdir/init.charging.rc:root/init.charging.rc \
-    $(LOCAL_PATH)/rootdir/meta_init.modem.rc:root/meta_init.modem.rc \
-    $(LOCAL_PATH)/rootdir/meta_init.project.rc:root/meta_init.project.rc \
-    $(LOCAL_PATH)/rootdir/meta_init.rc:root/meta_init.rc \
+    $(LOCAL_PATH)/rootdir/init.recovery.mt6582.rc:root/init.recovery.mt6592.rc \
+    $(LOCAL_PATH)/rootdir/init.mt6582.usb.rc:root/init.mt6592.usb.rc \
     $(LOCAL_PATH)/rootdir/twrp.fstab:recovery/root/etc/twrp.fstab \
     $(LOCAL_PATH)/rootdir/ueventd.mt6582.rc:root/ueventd.mt6582.rc \
-    $(LOCAL_PATH)/rootdir/sbin/busybox:root/sbin/busybox \
     $(LOCAL_KERNEL):kernel
 
 # Permissions
@@ -122,12 +112,12 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.sensor.light.xml:system/etc/permissions/android.hardware.sensor.light.xml \
     frameworks/native/data/etc/android.hardware.sensor.proximity.xml:system/etc/permissions/android.hardware.sensor.proximity.xml \
     frameworks/native/data/etc/android.hardware.location.gps.xml:system/etc/permissions/android.hardware.location.gps.xml \
+    frameworks/native/data/etc/android.hardware.camera.autofocus.xml:system/etc/permissions/android.hardware.camera.autofocus.xml \
+    frameworks/native/data/etc/android.hardware.camera.flash-autofocus.xml:system/etc/permissions/android.hardware.camera.flash-autofocus.xml \
+    frameworks/native/data/etc/android.hardware.camera.front.xml:system/etc/permissions/android.hardware.camera.front.xml \
+    frameworks/native/data/etc/android.hardware.camera.xml:system/etc/permissions/android.hardware.camera.xml \
     frameworks/native/data/etc/android.hardware.usb.host.xml:system/etc/permissions/android.hardware.usb.host.xml \
-    frameworks/native/data/etc/android.hardware.usb.accessory.xml:system/etc/permissions/android.hardware.usb.accessory.xml \
-    $(LOCAL_PATH)/configs/android.hardware.camera.xml:system/etc/permissions/android.hardware.camera.xml \
-	$(LOCAL_PATH)/configs/android.hardware.camera.autofocus.xml:system/etc/permissions/android.hardware.camera.autofocus.xml \
-	$(LOCAL_PATH)/configs/android.hardware.camera.flash-autofocus.xml:system/etc/permissions/android.hardware.camera.flash-autofocus.xml \
-	$(LOCAL_PATH)/configs/android.hardware.camera.front.xml:system/etc/permissions/android.hardware.camera.front.xml
+    frameworks/native/data/etc/android.hardware.usb.accessory.xml:system/etc/permissions/android.hardware.usb.accessory.xml
 
 # USB
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
@@ -135,10 +125,17 @@ PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
 	persist.service.adb.enable=1 \
 	persist.service.debuggable=1 \
 	ro.debuggable=1
-	
+
 # Torch
 PRODUCT_PACKAGES += \
     Torch
+
+# Charger
+PRODUCT_PACKAGES += \
+    charger \
+    charger_res_images \
+    libnl_2 \
+    libtinyxml
 
 # FM Radio
 PRODUCT_PACKAGES += \
@@ -157,7 +154,14 @@ PRODUCT_PACKAGES += \
 	
 # Set default player to AwesomePlayer
 PRODUCT_PROPERTY_OVERRIDES += \
-    persist.sys.media.use-awesome=true
+	ro.mediatek.version.release=ALPS.KK1.MP1.V2.10 \
+	ro.mediatek.platform=MT6582 \
+	ro.mediatek.chip_ver=S01 \
+	ro.mediatek.version.branch=KK1.MP1 \
+	ro.mediatek.version.sdk=2 \
+	ro.telephony.sim.count=2 \
+	ro.allow.mock.location=0 \
+	persist.mtk.wcn.combo.chipid=-1
 
 $(call inherit-product, build/target/product/full.mk)
 

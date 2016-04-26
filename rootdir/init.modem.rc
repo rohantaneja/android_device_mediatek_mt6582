@@ -1,12 +1,8 @@
 on post-fs-data
-
-    write /proc/bootprof "post-fs-data: on modem start"
-
     # Modem related device nodes
     mkdir /data/nvram/md 0770 root system
-
+    mkdir /data/nvram/md2 0770 root system
     chown radio radio /sys/kernel/ccci/boot
-
     # xplod: this is not in the original mtk file... But I have no
     # idea what kind of sorcery normally sets them
     chown radio radio /dev/ccci_fs
@@ -44,8 +40,6 @@ service ril-daemon /system/bin/rild
     class core
     socket rild stream 660 root radio
     socket rild2 stream 660 root radio
-    socket rild3 stream 660 root radio
-    socket rild4 stream 660 root radio
     socket rild-debug stream 660 radio system
     socket rild-oem stream 660 radio system
     socket rild-mtk-ut stream 660 radio net_bt
@@ -91,7 +85,19 @@ service ccci_fsd /system/bin/ccci_fsd 0
     class core
     oneshot
 
+service ccci2_fsd /system/bin/ccci_fsd 1
+    user root
+    group radio system
+    class core
+    oneshot
+
 service ccci_mdinit /system/bin/ccci_mdinit 0
+    user root
+    group radio system
+    class core
+    oneshot
+
+service ccci2_mdinit /system/bin/ccci_mdinit 1
     user root
     group radio system
     class core
@@ -109,17 +115,13 @@ service pppd /system/bin/pppd file /data/misc/ppp/ppp_options
     disabled 
     oneshot
 
-#
-#
-#  Modem related services (End)
-#
-
-#Add by hp.chen for 
-#
-#   Telephony Early Read service
-#
 service terservice /system/bin/terservice
     class core
     user radio
     group radio cache inet misc
     oneshot
+
+#
+#
+#  Modem related services (End)
+#

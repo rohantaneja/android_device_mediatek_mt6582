@@ -81,19 +81,6 @@ Only the three quirks included above are recognized at this point:
     <Include href="media_codecs_google_telephony.xml" />
 	
     <Decoders>
-        <!-- DOLBY_UDC -->
-        <MediaCodec name="OMX.dolby.ac3.decoder" >
-            <Type name="audio/ac3" />
-            <Quirk name="needs-flush-before-disable" />
-            <Quirk name="requires-flush-complete-emulation" />
-        </MediaCodec>
-        <MediaCodec name="OMX.dolby.ec3.decoder" >
-            <Type name="audio/eac3" />
-            <Quirk name="needs-flush-before-disable" />
-            <Quirk name="requires-flush-complete-emulation" />
-        </MediaCodec>
-        <!-- DOLBY_UDC END -->
-
         <!-- ffmpeg video codecs -->
         <MediaCodec name="OMX.ffmpeg.h263.decoder" type="video/3gpp">
             <Limit name="size" min="2x2" max="352x288" />

@@ -16,12 +16,8 @@ on init
     # By default, primary storage is physical
     setprop ro.vold.primary_physical 1
 
-# See storage config details at http://source.android.com/tech/storage/
-    mkdir /storage/sdcard 0555 root root
- 
-    # Support legacy paths
-    symlink storage/sdcard /sdcard
-    symlink storage/sdcard /mnt/sdcard
+    symlink /sdcard /mnt/sdcard
+    symlink /sdcard /storage/sdcard0
 
     chown system graphics /dev/ion
     chmod 0644 /dev/ion

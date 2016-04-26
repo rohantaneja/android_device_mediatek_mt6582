@@ -11,11 +11,11 @@ Storage | 8GB (varies)
 Display | 6.0" 1280 x 720 px (varies)
 Camera  | 8MPx, LED Flash
 
-This branch is for building 5.1.1 based ROMs.
+This branch is for building 6.0 based ROMs.
 
 * Compilation
 
-        # repo init -u git://github.com/rohantaneja/android.git -b cm-12.1
+        # repo init -u git://github.com/rohantaneja/android.git -b cm-13.0
         
         # repo sync
         

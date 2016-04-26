@@ -7,5 +7,6 @@
 /emmc@cache         /cache          ext4    noatime,nosuid,nodev,noauto_da_alloc,discard	wait,check
 /emmc@protect_f     /protect_f      ext4    noatime,nosuid,nodev,noauto_da_alloc,discard	wait,check
 /emmc@protect_s     /protect_s      ext4    noatime,nosuid,nodev,noauto_da_alloc,discard	wait,check
-/devices/platform/mtk-msdc.1/mmc_host*		auto	auto	defaults		voldmanaged=sdcard1:auto,encryptable=userdata
-/devices/platform/mt_usb		auto 	auto	defaults	voldmanaged=usbotg:auto
+/devices/platform/mtk-msdc.0/mmc_host/mmc0/mmc0*	auto	vfat	defaults	voldmanaged=sdcard0:8,nonremovable,noemulatedsd
+/devices/platform/mtk-msdc.1/mmc_host/mmc1/mmc1*	auto	auto	defaults        voldmanaged=sdcard1:auto,encryptable=userdata
+/devices/platform/mt_usb*		auto 	auto	defaults	voldmanaged=usb:auto

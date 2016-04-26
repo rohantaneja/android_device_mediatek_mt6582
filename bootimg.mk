@@ -30,12 +30,6 @@ $(INSTALLED_KERNEL_TARGET).mtk: $(INSTALLED_KERNEL_TARGET).mtk.header
 INSTALLED_RAMDISK_TARGET := $(BUILT_RAMDISK_TARGET)
 $(INSTALLED_RAMDISK_TARGET): $(MKBOOTFS) $(INTERNAL_RAMDISK_FILES) | $(MINIGZIP)
 	$(call pretty,"Target ram disk: $@")
-	cmp -s device/mediatek/mt6582/rootdir/custom_init out/target/product/mt6582/root/init; \
-	RETVAL=$$?; \
-	if [ $$RETVAL -eq 1 ]; then \
-		mv out/target/product/mt6582/root/init out/target/product/mt6582/root/init2; \
-		cp device/mediatek/mt6582/rootdir/custom_init out/target/product/mt6582/root/init; \
-	fi
 	$(hide) $(MKBOOTFS) $(TARGET_ROOT_OUT) | $(MINIGZIP) > $@
 
 $(INSTALLED_RAMDISK_TARGET).mtk.header: $(INSTALLED_RAMDISK_TARGET)

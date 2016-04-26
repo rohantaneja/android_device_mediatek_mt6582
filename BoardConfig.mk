@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2016 The CyanogenMod Project - MediaTek
+# Copyright (C) 2016 The CyanogenMod Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -70,6 +70,7 @@ TARGET_CPU_MEMCPY_OPT_DISABLE := true
 BOARD_EGL_CFG := device/mediatek/mt6582/configs/egl.cfg
 USE_OPENGL_RENDERER := true
 BOARD_EGL_WORKAROUND_BUG_10194508 := true
+TARGET_REQUIRES_SYNCHRONOUS_SETSURFACE := true
 
 # MTK Hardware
 BOARD_HAS_MTK_HARDWARE := true
@@ -78,7 +79,7 @@ COMMON_GLOBAL_CFLAGS += -DMTK_HARDWARE -DADD_LEGACY_ACQUIRE_BUFFER_SYMBOL
 COMMON_GLOBAL_CPPFLAGS += -DMTK_HARDWARE
 
 # Offline charging
-ADDITIONAL_DEFAULT_PROPERTIES += ro.mount.fs=EXT4
+BOARD_CHARGING_MODE_BOOTING_LPM := /sys/class/BOOT/BOOT/boot/boot_mode
 
 # RIL
 BOARD_RIL_CLASS := ../../../device/mediatek/mt6582/ril/
@@ -102,6 +103,9 @@ BOARD_HAVE_BLUETOOTH := true
 BOARD_HAVE_BLUETOOTH_MTK := true
 BOARD_BLUETOOTH_DOES_NOT_USE_RFKILL := true
 BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR := device/mediatek/mt6582/bluetooth
+
+# Sensors
+TARGET_NO_SENSOR_PERMISSION_CHECK := true
 
 # CWM
 TARGET_RECOVERY_FSTAB := device/mediatek/mt6582/rootdir/recovery.fstab
@@ -127,9 +131,5 @@ TARGET_USE_CUSTOM_LUN_FILE_PATH := "/sys/devices/virtual/android_usb/android0/f_
 BOARD_SEPOLICY_DIRS := \
        device/mediatek/mt6582/sepolicy
 
-BOARD_SEPOLICY_UNION := \
-       device.te \
-       app.te \
-       system.te \
-       netd.te \
-       file_contexts
+# Use old sepolicy version
+POLICYVERS := 26

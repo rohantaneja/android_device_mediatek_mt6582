@@ -494,4 +494,3 @@ on property:mediatek.usb.port.mode=usb
 
 on property:mediatek.usb.port.mode=uart
 	write /sys/devices/platform/mt_usb/portmode 1
-

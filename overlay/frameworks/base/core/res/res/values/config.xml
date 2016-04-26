@@ -129,7 +129,7 @@
 
     <bool name="config_user_notification_of_restrictied_mobile_access">false</bool>
 
-    <!-- Performance profiles -->
-    <string name="config_perf_profile_prop">sys.perf.profile</string>
-    <string name="config_perf_profile_default_entry">1</string>
+    <!-- Older rotation sensors are not setting event.timestamp correctly. Setting to
+	 true will use SystemClock.elapsedRealtimeNanos() to set timestamp. -->
+    <bool name="config_useSystemClockforRotationSensor">true</bool>
 </resources>

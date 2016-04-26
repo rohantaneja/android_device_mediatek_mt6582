@@ -403,7 +403,7 @@ public class MediaTekRIL extends RIL implements CommandsInterface {
             case RIL_REQUEST_ENTER_SIM_PUK2: ret =  responseInts(p); break;
             case RIL_REQUEST_CHANGE_SIM_PIN: ret =  responseInts(p); break;
             case RIL_REQUEST_CHANGE_SIM_PIN2: ret =  responseInts(p); break;
-            case RIL_REQUEST_ENTER_DEPERSONALIZATION_CODE: ret =  responseInts(p); break;
+            case RIL_REQUEST_ENTER_NETWORK_DEPERSONALIZATION: ret =  responseInts(p); break;
             case RIL_REQUEST_GET_CURRENT_CALLS: ret =  responseCallList(p); break;
             case RIL_REQUEST_DIAL: ret =  responseVoid(p); break;
             case RIL_REQUEST_GET_IMSI: ret =  responseString(p); break;
@@ -664,7 +664,7 @@ public class MediaTekRIL extends RIL implements CommandsInterface {
             case RIL_REQUEST_ENTER_SIM_PUK2: return "ENTER_SIM_PUK2";
             case RIL_REQUEST_CHANGE_SIM_PIN: return "CHANGE_SIM_PIN";
             case RIL_REQUEST_CHANGE_SIM_PIN2: return "CHANGE_SIM_PIN2";
-            case RIL_REQUEST_ENTER_DEPERSONALIZATION_CODE: return "ENTER_DEPERSONALIZATION_CODE";
+            case RIL_REQUEST_ENTER_NETWORK_DEPERSONALIZATION: return "ENTER_DEPERSONALIZATION_CODE";
             case RIL_REQUEST_GET_CURRENT_CALLS: return "GET_CURRENT_CALLS";
             case RIL_REQUEST_DIAL: return "DIAL";
             case RIL_REQUEST_GET_IMSI: return "GET_IMSI";
@@ -761,7 +761,6 @@ public class MediaTekRIL extends RIL implements CommandsInterface {
             case RIL_REQUEST_REPORT_SMS_MEMORY_STATUS: return "RIL_REQUEST_REPORT_SMS_MEMORY_STATUS";
             case RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING: return "RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING";
             case RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE: return "RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE";
-            case RIL_REQUEST_GET_DATA_CALL_PROFILE: return "RIL_REQUEST_GET_DATA_CALL_PROFILE";
             case RIL_REQUEST_ISIM_AUTHENTICATION: return "RIL_REQUEST_ISIM_AUTHENTICATION";
             case RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU: return "RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU";
             case RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS: return "RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS";
@@ -937,9 +936,8 @@ public class MediaTekRIL extends RIL implements CommandsInterface {
     }
 
     @Override
-    public void setUiccSubscription(int slotId, int appIndex, int subId,
-				    int subStatus, Message result) {
-	    if (RILJ_LOGD) riljLog("setUiccSubscription" + slotId + " " + appIndex + " " + subId + " " + subStatus);
+    public void setUiccSubscription(int appIndex, boolean activate, Message result) {
+	    if (RILJ_LOGD) riljLog("setUiccSubscription" + appIndex + " " + activate);
 
 	    // Fake response (note: should be sent before mSubscriptionStatusRegistrants or
 	    // SubscriptionManager might not set the readiness correctly)
@@ -947,13 +945,13 @@ public class MediaTekRIL extends RIL implements CommandsInterface {
 	    result.sendToTarget();
 
 	    // TODO: Actually turn off/on the radio (and don't fight with the ServiceStateTracker)
-	    if (subStatus == 1 /* ACTIVATE */) {
+	    if (activate) {
 		    // Subscription changed: enabled
 		    if (mSubscriptionStatusRegistrants != null) {
 			    mSubscriptionStatusRegistrants.notifyRegistrants(
 									     new AsyncResult (null, new int[] {1}, null));
 		    }
-	    } else if (subStatus == 0 /* DEACTIVATE */) {
+	    } else {
 		    // Subscription changed: disabled
 		    if (mSubscriptionStatusRegistrants != null) {
 			    mSubscriptionStatusRegistrants.notifyRegistrants(
