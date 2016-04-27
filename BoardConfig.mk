@@ -133,3 +133,6 @@ BOARD_SEPOLICY_DIRS := \
 
 # Use old sepolicy version
 POLICYVERS := 26
+
+# Hack for build
+$(shell mkdir -p $(OUT)/obj/KERNEL_OBJ/usr)
