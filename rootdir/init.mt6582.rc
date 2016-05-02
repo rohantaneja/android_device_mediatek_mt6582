@@ -1,4 +1,4 @@
-import init.mt6592.usb.rc
+import init.mt6582.usb.rc
 import init.modem.rc
 
 on charger
