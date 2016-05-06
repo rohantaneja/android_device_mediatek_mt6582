@@ -18,6 +18,7 @@
 /dev/seccfg               0660   root       system
 /dev/pro_info             0660	 root	    system
 /dev/otp 		  0660	 root	    nvram
+/dev/block/mmcblk0p1	0640	 root	    system
 /dev/nvram 		   0660	 root	    system
 /dev/misc		   0660	 root	    system
 /dev/block/mmcblk0	   0660	 root	    system
@@ -25,6 +26,27 @@
 
 # change misc-sd to 0660 root system
 /dev/misc-sd              0660   root       system
+
+#connectivity
+# Create char device file for WMT, GPS, BT, FM, WIFI
+/dev/stpwmt              0660  system      system
+/dev/wmtdetect           0660  system      system
+
+# BT
+/dev/stpbt               0660  bluetooth   net_bt_stack
+
+# GPS
+/dev/stpgps              0660  gps         gps
+/dev/gps                 0660  gps         system
+
+# WIFI
+/dev/wmtWifi             0660  system      system
+
+#FMRadio
+/dev/fm                  0660  media       media
+
+#BT SCO CVSD, for MT6572 and MT6582 CVSD codec on AP
+/dev/ebc                  0660  media       media
 
 # add the read write right of ttyUSB*
 /dev/bus/usb/*     	  0660   root       usb
@@ -105,12 +127,14 @@
 /dev/usb_accessory        0660   root       usb
 /dev/tun                  0660   system     vpn
 
-/dev/ccci*                0660   ccci       ccci
-/dev/ttyC*                0660   ccci       ccci
-/sys/kernel/ccci          modem_info   0644   ccci       ccci
-/sys/kernel/ccci          md1_postfix  0644   ccci       ccci
-/sys/kernel/ccci          md2_postfix  0644   ccci       ccci
-/dev/eemcs*               0660   ccci       ccci
+/dev/ccci*                0660   radio      radio
+/dev/ttyC*                0660   radio      radio
+/sys/kernel/ccci          modem_info   0644   radio      radio
+/sys/kernel/ccci          md1_postfix  0644   radio      radio
+/sys/kernel/ccci          md2_postfix  0644   radio      radio
+/dev/eemcs*               0660   radio      radio
+/dev/ccci_pcm_rx          0660   media      media
+/dev/ccci_pcm_tx          0660   media      media
 
 # SGX device node
 /dev/pvrsrvkm             0666   root       root

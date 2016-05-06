@@ -1,0 +1,11 @@
+# mt6582 storage specific rc file.
+import /init.mt6582.rc
+
+on init
+
+# See storage config details at http://source.android.com/tech/storage/
+    mkdir /storage/sdcard 0555 root root
+ 
+    # Support legacy paths
+    symlink storage/sdcard /sdcard
+    symlink storage/sdcard /mnt/sdcard

@@ -1,23 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <device name="Android">
     <item name="none">0</item>
-    <!-- screen values are most likely very wrong:
-	 copied from Fairphone1 -->
-    <item name="screen.on">206.1</item>
-    <item name="screen.full">237.4</item>
-    <item name="bluetooth.active">26.2</item>
-    <item name="bluetooth.on">4.3</item>
-    <item name="wifi.on">4.1</item>
-    <item name="wifi.active">90.8</item>
-    <item name="wifi.scan">9.5</item>
-    <item name="dsp.audio">70.75</item>
-    <item name="dsp.video">351</item>
-    <item name="radio.active">31.7</item>
-    <item name="radio.scanning">189.6</item>
-    <item name="gps.on">0.2</item>
+    <item name="screen.on">120</item>
+    <item name="screen.full">250</item>
+    <item name="bluetooth.active">20</item>
+    <item name="bluetooth.on">0.5</item>
+    <item name="wifi.on">1.0</item>
+    <item name="wifi.active">25</item>
+    <item name="wifi.scan">6</item>
+    <item name="dsp.audio">15</item>
+    <item name="dsp.video">60</item>
+    <item name="radio.active">80</item>
+    <item name="radio.scanning">85</item>
+    <item name="gps.on">45</item>
     <array name="radio.on">
-        <value>11.9</value>
-        <value>11.9</value>
+        <value>1.5</value>
+        <value>1.5</value>
     </array>
     <array name="cpu.speeds">
         <value>1209000</value>
@@ -25,12 +23,19 @@
         <value>754000</value>
         <value>497250</value>
     </array>
-    <item name="cpu.idle">7.9</item>
+    <item name="cpu.idle">2.0</item>
     <array name="cpu.active">
-        <value>0.1</value>
-        <value>0.1</value>
-        <value>0.1</value>
-        <value>0.1</value>
+        <value>120</value>
+        <value>98</value>
+        <value>75</value>
+        <value>49</value>
     </array>
-    <item name="battery.capacity">3200</item>
+    <item name="battery.capacity">1728</item>
+    <array name="wifi.batchedscan">
+        <value>.0002</value>
+        <value>.002</value>
+        <value>.02</value>
+        <value>.2</value>
+        <value>2</value>
+    </array>
 </device>

@@ -3,4 +3,4 @@
 
 #define BTM_DEF_LOCAL_NAME   "Mediatek MT6582"
 
-#endif
+#endif 
