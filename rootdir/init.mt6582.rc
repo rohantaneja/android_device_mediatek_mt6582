@@ -498,7 +498,6 @@ on post-fs-data
     chown gps gps /sys/devices/virtual/gpsdrv/gps/pwrsave
     chown gps gps /sys/devices/virtual/gpsdrv/gps/status
 
-
 #
 # Connectivity related device nodes & configuration (end)
 #
