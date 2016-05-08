@@ -73,6 +73,17 @@ PRODUCT_PACKAGES += \
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/mtk-kpd.kl:system/usr/keylayout/mtk-kpd.kl
 
+# FM Radio
+PRODUCT_PACKAGES += \
+    FMRadio \
+    libfmjni \
+    libfmmt6620 \
+    libfmmt6628 \
+    libfmmt6627 \
+    libfmmt6630 \
+    libfmcust \
+    libmtkplayer
+
 # GSM
 #PRODUCT_PACKAGES += \
 #    gsm0710muxd

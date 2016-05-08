@@ -386,6 +386,11 @@ on post-fs-data
     chmod 0440 /dev/devmap
     chown root system /dev/devmap
 
+    # FM Radio device node
+    exec /system/xbin/mknod /dev/fm c 193 0
+    chmod 0777 /dev/fm
+    chown system media /dev/fm
+
     # BT relayer mode used VCOM
     chown bluetooth radio /dev/ttyGS2
     chmod 0660 /dev/ttyGS2
