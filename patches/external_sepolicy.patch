@@ -1,0 +1,88 @@
+From 20384cd96146ae7474aabfd631300831279c738a Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Wed, 6 Apr 2016 14:07:11 +0800
+Subject: [PATCH] MediaTek: fix the policydb version 30 does not match my
+ version range 15-29. by @xen0n.
+
+---
+ Android.mk       |  1 -
+ ioctl_macros     | 15 ---------------
+ isolated_app.te  |  2 +-
+ shell.te         |  2 +-
+ untrusted_app.te |  3 ---
+ 5 files changed, 2 insertions(+), 21 deletions(-)
+ delete mode 100644 ioctl_macros
+
+diff --git a/Android.mk b/Android.mk
+index 6873d07..e7b1bd4 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -51,7 +51,6 @@ sepolicy_build_files := security_classes \
+                         policy_capabilities \
+                         te_macros \
+                         attributes \
+-                        ioctl_macros \
+                         *.te \
+                         roles \
+                         users \
+diff --git a/ioctl_macros b/ioctl_macros
+deleted file mode 100644
+index 6012568..0000000
+--- a/ioctl_macros
++++ /dev/null
+@@ -1,15 +0,0 @@
+-# socket ioctls allowed to unprivileged apps
+-define(`unpriv_sock_ioctls', `
+-{
+-# all socket ioctls except:
+-# 1) the Mac address SIOCGIFHWADDR 0x8927
+-# 2) device private SIOCDEVPRIVATE-SIOCDEVPRIVLAST 0x89F0-0x89FF
+-# 3) protocol private SIOCPROTOPRIVATE-SIOCPROTOPRIVLAST 0x89E0-0x89EF
+-0x8900-0x8926 0x8928-0x89DF
+-# all wireless extensions ioctls except:
+-# 1) get/set essid IOCSIWESSID 0x8B1A SIOCGIWESSID 0x8B1B
+-# 2) device private ioctls SIOCIWFIRSTPRIV-SIOCIWLASTPRIV 0x8BE0-0x8BFF
+-0x8B00-0x8B09 0x8B1C-0x8BDF
+-# commonly used TTY ioctls
+-0x5411 0x5451
+-}')
+diff --git a/isolated_app.te b/isolated_app.te
+index 330f0af..a4163f2 100644
+--- a/isolated_app.te
++++ b/isolated_app.te
+@@ -19,7 +19,7 @@ allow isolated_app activity_service:service_manager find;
+ allow isolated_app display_service:service_manager find;
+ 
+ # only allow unprivileged socket ioctl commands
+-allow isolated_app self:{ rawip_socket tcp_socket udp_socket } unpriv_sock_ioctls;
++# allow isolated_app self:{ rawip_socket tcp_socket udp_socket } unpriv_sock_ioctls;
+ 
+ #####
+ ##### Neverallow
+diff --git a/shell.te b/shell.te
+index 4b4093d..a14328c 100644
+--- a/shell.te
++++ b/shell.te
+@@ -78,7 +78,7 @@ allow shell bootchart_data_file:dir rw_dir_perms;
+ allow shell bootchart_data_file:file create_file_perms;
+ 
+ # only allow unprivileged socket ioctl commands
+-allow shell self:{ rawip_socket tcp_socket udp_socket } unpriv_sock_ioctls;
++# allow shell self:{ rawip_socket tcp_socket udp_socket } unpriv_sock_ioctls;
+ 
+ # Do not allow shell to hard link to any files.
+ # In particular, if shell hard links to app data
+diff --git a/untrusted_app.te b/untrusted_app.te
+index fb76317..1ab18c3 100644
+--- a/untrusted_app.te
++++ b/untrusted_app.te
+@@ -101,9 +101,6 @@ allow untrusted_app persistent_data_block_service:service_manager find;
+ allow untrusted_app { apk_tmp_file apk_private_tmp_file }:dir r_dir_perms;
+ allow untrusted_app { apk_tmp_file apk_private_tmp_file }:file r_file_perms;
+ 
+-# only allow unprivileged socket ioctl commands
+-allow untrusted_app self:{ rawip_socket tcp_socket udp_socket } unpriv_sock_ioctls;
+-
+ # Allow GMS core to access perfprofd output, which is stored
+ # in /data/misc/perfprofd/. GMS core will need to list all
+ # data stored in that directory to process them one by one.

@@ -1,0 +1,459 @@
+From 79091a80118d5bee802547956703e3fbbd85269a Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 20:49:46 +0800
+Subject: [PATCH 1/7] MediaTek: the improving & fixing of hwui crashing.
+
+---
+ libs/hwui/Caches.cpp | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/libs/hwui/Caches.cpp b/libs/hwui/Caches.cpp
+index 2763e89..8902534 100644
+--- a/libs/hwui/Caches.cpp
++++ b/libs/hwui/Caches.cpp
+@@ -87,16 +87,21 @@ void Caches::initFont() {
+ }
+ 
+ void Caches::initExtensions() {
++#ifndef MTK_HARDWARE
+     if (mExtensions.hasDebugMarker()) {
+         eventMark = glInsertEventMarkerEXT;
+-
+         startMark = glPushGroupMarkerEXT;
+         endMark = glPopGroupMarkerEXT;
+     } else {
+-        eventMark = eventMarkNull;
+-        startMark = startMarkNull;
+-        endMark = endMarkNull;
++         eventMark = eventMarkNull;
++         startMark = startMarkNull;
++         endMark = endMarkNull;
+     }
++#else
++         eventMark = eventMarkNull;
++         startMark = startMarkNull;
++         endMark = endMarkNull;
++#endif
+ }
+ 
+ void Caches::initConstraints() {
+
+From d0f514c54fc2557379d4d1d70082d649689a112e Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 20:53:48 +0800
+Subject: [PATCH 2/7] location: add MTK GNSS extension for M(1/6).
+
+---
+ location/java/android/location/GpsStatus.java | 35 +++++++++++++++++++++++++++
+ 1 file changed, 35 insertions(+)
+
+diff --git a/location/java/android/location/GpsStatus.java b/location/java/android/location/GpsStatus.java
+index 323f326..7f7f5c0 100644
+--- a/location/java/android/location/GpsStatus.java
++++ b/location/java/android/location/GpsStatus.java
+@@ -167,6 +167,41 @@ synchronized void setStatus(int svCount, int[] prns, float[] snrs,
+         }
+     }
+ 
++      /**
++     * Used internally within {@link LocationManager} to copy GPS status
++     * data from the Location Manager Service to its cached GpsStatus instance.
++     * Is synchronized to ensure that GPS status updates are atomic.
++     *
++     * This is modified to become aware of explicit GNSS support of &gt;32
++     * satellites.
++     */
++    synchronized void setStatusFromGnss(int gnssSvCount, int[] prns, float[] snrs,
++            float[] elevations, float[] azimuths,
++            boolean[] ephemerisPresences,
++            boolean[] almanacPresences,
++            boolean[] usedInFix) {
++        clearSatellites();
++        for (int i = 0; i < gnssSvCount; i++) {
++            int prn = prns[i] - 1;
++
++            if (prn >= 0 && prn < NUM_SATELLITES) {
++                GpsSatellite satellite = mSatellites.get(prn);
++                if (satellite == null) {
++                    satellite = new GpsSatellite(prn);
++                    mSatellites.put(prn, satellite);
++                }
++
++                satellite.mValid = true;
++                satellite.mSnr = snrs[i];
++                satellite.mElevation = elevations[i];
++                satellite.mAzimuth = azimuths[i];
++                satellite.mHasEphemeris = ephemerisPresences[i];
++                satellite.mHasAlmanac = almanacPresences[i];
++                satellite.mUsedInFix = usedInFix[i];
++            }
++        }
++    }
++
+     /**
+      * Used by {@link LocationManager#getGpsStatus} to copy LocationManager's
+      * cached GpsStatus instance to the client's copy.
+
+From e301fd18e5e58776eb22c16e2573bb21ab5a7ba8 Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 20:55:35 +0800
+Subject: [PATCH 3/7] location: add MTK GNSS extension for M(2/6).
+
+---
+ location/java/android/location/IGpsStatusListener.aidl | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/location/java/android/location/IGpsStatusListener.aidl b/location/java/android/location/IGpsStatusListener.aidl
+index 62b1c6b..52865b7 100644
+--- a/location/java/android/location/IGpsStatusListener.aidl
++++ b/location/java/android/location/IGpsStatusListener.aidl
+@@ -29,5 +29,10 @@ oneway interface IGpsStatusListener
+     void onSvStatusChanged(int svCount, in int[] prns, in float[] snrs, 
+             in float[] elevations, in float[] azimuths, 
+             int ephemerisMask, int almanacMask, int usedInFixMask);
++    void onGnssSvStatusChanged(int gnssSvCount, in int[] prns, in float[] snrs,
++            in float[] elevations, in float[] azimuths,
++            in boolean[] ephemerisPresences,
++            in boolean[] almanacPresences,
++            in boolean[] usedInFix);
+     void onNmeaReceived(long timestamp, String nmea);
+ }
+
+From 942253b84a3762f3c740ae381e63ad01d891a387 Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 20:57:41 +0800
+Subject: [PATCH 4/7] location: add MTK GNSS extension for M(3/6).
+
+---
+ .../java/android/location/LocationManager.java     | 25 ++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
+
+diff --git a/location/java/android/location/LocationManager.java b/location/java/android/location/LocationManager.java
+index 4544814..3adf08e 100644
+--- a/location/java/android/location/LocationManager.java
++++ b/location/java/android/location/LocationManager.java
+@@ -1478,6 +1478,31 @@ public void onSvStatusChanged(int svCount, int[] prns, float[] snrs,
+             }
+         }
+ 
++          @Override
++        public void onGnssSvStatusChanged(int gnssSvCount, int[] prns, float[] snrs,
++                float[] elevations, float[] azimuths,
++                boolean[] ephemerisPresences,
++                boolean[] almanacPresences,
++                boolean[] usedInFix) {
++            if (mListener != null) {
++                mGpsStatus.setStatusFromGnss(
++                        gnssSvCount,
++                        prns,
++                        snrs,
++                        elevations,
++                        azimuths,
++                        ephemerisPresences,
++                        almanacPresences,
++                        usedInFix);
++
++                Message msg = Message.obtain();
++                msg.what = GpsStatus.GPS_EVENT_SATELLITE_STATUS;
++                // remove any SV status messages already in the queue
++                mGpsHandler.removeMessages(GpsStatus.GPS_EVENT_SATELLITE_STATUS);
++                mGpsHandler.sendMessage(msg);
++            }
++        }
++
+         @Override
+         public void onNmeaReceived(long timestamp, String nmea) {
+             if (mNmeaListener != null) {
+
+From afb16c2d661cf162c5eb8ad297e367eef9f26afb Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 21:03:38 +0800
+Subject: [PATCH 5/7] location: add MTK GNSS extension for M(4/6).
+
+---
+ .../server/location/GpsLocationProvider.java       | 86 +++++++++++++++++++++-
+ 1 file changed, 82 insertions(+), 4 deletions(-)
+
+diff --git a/services/core/java/com/android/server/location/GpsLocationProvider.java b/services/core/java/com/android/server/location/GpsLocationProvider.java
+index bdb77db..973393d 100644
+--- a/services/core/java/com/android/server/location/GpsLocationProvider.java
++++ b/services/core/java/com/android/server/location/GpsLocationProvider.java
+@@ -1524,6 +1524,72 @@ private void reportSvStatus() {
+         }
+     }
+ 
++     /**
++     * Count number of GNSS satellites used in fix.
++     *
++     * We could not rely on Integer.bitCount as GNSS used-in-fix info is not
++     * represented as a bit-mask.
++     */
++    private int countGnssSvUsedInFix(final int gnssSvCount) {
++        int result = 0;
++
++        for (int i = 0; i < gnssSvCount; i++) {
++            if (mSvUsedInFix[i]) {
++                result++;
++            }
++        }
++
++        return result;
++    }
++
++    /**
++     * called from native code to update GNSS SV info
++     */
++    private void reportGnssSvStatus() {
++        final int svCount = native_read_gnss_sv_status(
++                mSvs,
++                mSnrs,
++                mSvElevations,
++                mSvAzimuths,
++                mSvEphemerisPresences,
++                mSvAlmanacPresences,
++                mSvUsedInFix);
++        mListenerHelper.onGnssSvStatusChanged(
++                svCount,
++                mSvs,
++                mSnrs,
++                mSvElevations,
++                mSvAzimuths,
++                mSvEphemerisPresences,
++                mSvAlmanacPresences,
++                mSvUsedInFix);
++
++        if (VERBOSE) {
++            Log.v(TAG, "GNSS SV count: " + svCount);
++            for (int i = 0; i < svCount; i++) {
++                Log.v(TAG, "sv: " + mSvs[i] +
++                        " snr: " + mSnrs[i]/10 +
++                        " elev: " + mSvElevations[i] +
++                        " azimuth: " + mSvAzimuths[i] +
++                        (!mSvEphemerisPresences[i] ? "  " : " E") +
++                        (!mSvAlmanacPresences[i] ? "  " : " A") +
++                        (!mSvUsedInFix[i] ? "" : "U"));
++            }
++        }
++
++        // return number of sets used in fix instead of total
++        updateStatus(mStatus, countGnssSvUsedInFix(svCount));
++
++        if (mNavigating && mStatus == LocationProvider.AVAILABLE && mLastFixTime > 0 &&
++            System.currentTimeMillis() - mLastFixTime > RECENT_FIX_TIMEOUT) {
++            // send an intent to notify that the GPS is no longer receiving fixes.
++            Intent intent = new Intent(LocationManager.GPS_FIX_CHANGE_ACTION);
++            intent.putExtra(LocationManager.EXTRA_GPS_ENABLED, false);
++            mContext.sendBroadcastAsUser(intent, UserHandle.ALL);
++            updateStatus(LocationProvider.TEMPORARILY_UNAVAILABLE, mSvCount);
++        }
++    }
++
+     /**
+      * called from native code to update AGPS status
+      */
+@@ -2256,13 +2322,19 @@ public void reset() {
+     private static final int EPHEMERIS_MASK = 0;
+     private static final int ALMANAC_MASK = 1;
+     private static final int USED_FOR_FIX_MASK = 2;
++  
++    // GNSS extension
++    private static final int MAX_GNSS_SVS = 256;
+ 
+     // preallocated arrays, to avoid memory allocation in reportStatus()
+-    private int mSvs[] = new int[MAX_SVS];
+-    private float mSnrs[] = new float[MAX_SVS];
+-    private float mSvElevations[] = new float[MAX_SVS];
+-    private float mSvAzimuths[] = new float[MAX_SVS];
++    private int mSvs[] = new int[MAX_GNSS_SVS];
++    private float mSnrs[] = new float[MAX_GNSS_SVS];
++    private float mSvElevations[] = new float[MAX_GNSS_SVS];
++    private float mSvAzimuths[] = new float[MAX_GNSS_SVS];
+     private int mSvMasks[] = new int[3];
++    private boolean mSvEphemerisPresences[] = new boolean[MAX_GNSS_SVS];
++    private boolean mSvAlmanacPresences[] = new boolean[MAX_GNSS_SVS];
++    private boolean mSvUsedInFix[] = new boolean[MAX_GNSS_SVS];
+     private int mSvCount;
+     // preallocated to avoid memory allocation in reportNmea()
+     private byte[] mNmeaBuffer = new byte[120];
+@@ -2284,6 +2356,12 @@ private native boolean native_set_position_mode(int mode, int recurrence, int mi
+     // mask[0] is ephemeris mask and mask[1] is almanac mask
+     private native int native_read_sv_status(int[] svs, float[] snrs,
+             float[] elevations, float[] azimuths, int[] masks);
++    // returns number of GNSS SVs
++    private native int native_read_gnss_sv_status(int[] svs, float[] snrs,
++            float[] elevations, float[] azimuths,
++            boolean[] ephemerisPresences,
++            boolean[] almanacPresences,
++            boolean[] usedInFix);
+     private native int native_read_nmea(byte[] buffer, int bufferSize);
+     private native void native_inject_location(double latitude, double longitude, float accuracy);
+ 
+
+From e24074a6f70ac1f9988abf513c065ebcb1462189 Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 21:05:23 +0800
+Subject: [PATCH 6/7] location: add MTK GNSS extension for M(5/6).
+
+---
+ .../server/location/GpsStatusListenerHelper.java   | 26 ++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/services/core/java/com/android/server/location/GpsStatusListenerHelper.java b/services/core/java/com/android/server/location/GpsStatusListenerHelper.java
+index 53ff6c2..3e31fea 100644
+--- a/services/core/java/com/android/server/location/GpsStatusListenerHelper.java
++++ b/services/core/java/com/android/server/location/GpsStatusListenerHelper.java
+@@ -97,6 +97,32 @@ public void execute(IGpsStatusListener listener) throws RemoteException {
+         };
+         foreach(operation);
+     }
++  
++    public void onGnssSvStatusChanged(
++            final int svCount,
++            final int[] prns,
++            final float[] snrs,
++            final float[] elevations,
++            final float[] azimuths,
++            final boolean[] ephemerisPresences,
++            final boolean[] almanacPresences,
++            final boolean[] usedInFix) {
++        Operation operation = new Operation() {
++            @Override
++            public void execute(IGpsStatusListener listener) throws RemoteException {
++                listener.onGnssSvStatusChanged(
++                        svCount,
++                        prns,
++                        snrs,
++                        elevations,
++                        azimuths,
++                        ephemerisPresences,
++                        almanacPresences,
++                        usedInFix);
++            }
++        };
++        foreach(operation);
++    }
+ 
+     public void onNmeaReceived(final long timestamp, final String nmea) {
+         Operation operation = new Operation() {
+
+From acb17606c23753521ee8248cbccb517280fc4292 Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 21:10:15 +0800
+Subject: [PATCH 7/7] location: add MTK GNSS extension for M(6/6).
+
+---
+ ...android_server_location_GpsLocationProvider.cpp | 55 ++++++++++++++++++++++
+ 1 file changed, 55 insertions(+)
+
+diff --git a/services/core/jni/com_android_server_location_GpsLocationProvider.cpp b/services/core/jni/com_android_server_location_GpsLocationProvider.cpp
+index 91eeb8b..3a2851a3 100644
+--- a/services/core/jni/com_android_server_location_GpsLocationProvider.cpp
++++ b/services/core/jni/com_android_server_location_GpsLocationProvider.cpp
+@@ -39,6 +39,7 @@ static jobject mCallbacksObj = NULL;
+ static jmethodID method_reportLocation;
+ static jmethodID method_reportStatus;
+ static jmethodID method_reportSvStatus;
++static jmethodID method_reportGnssSvStatus;
+ static jmethodID method_reportAGpsStatus;
+ static jmethodID method_reportNmea;
+ static jmethodID method_setEngineCapabilities;
+@@ -69,6 +70,7 @@ static const GnssConfigurationInterface* sGnssConfigurationInterface = NULL;
+ 
+ // temporary storage for GPS callbacks
+ static GpsSvStatus  sGpsSvStatus;
++static GnssSvStatus  sGnssSvStatus;
+ static const char* sNmeaString;
+ static int sNmeaStringLength;
+ 
+@@ -105,10 +107,20 @@ static void status_callback(GpsStatus* status)
+ static void sv_status_callback(GpsSvStatus* sv_status)
+ {
+     JNIEnv* env = AndroidRuntime::getJNIEnv();
++    ALOGD("sv_status_callback(%p)", sv_status);
+     memcpy(&sGpsSvStatus, sv_status, sizeof(sGpsSvStatus));
+     env->CallVoidMethod(mCallbacksObj, method_reportSvStatus);
+     checkAndClearExceptionFromCallback(env, __FUNCTION__);
+ }
++  
++static void gnss_sv_status_callback(GnssSvStatus* sv_status)
++{
++    JNIEnv* env = AndroidRuntime::getJNIEnv();
++    ALOGD("gnss_sv_status_callback(%p)", sv_status);
++    memcpy(&sGnssSvStatus, sv_status, sizeof(sGnssSvStatus));
++    env->CallVoidMethod(mCallbacksObj, method_reportGnssSvStatus);
++    checkAndClearExceptionFromCallback(env, __FUNCTION__);
++}
+ 
+ static void nmea_callback(GpsUtcTime timestamp, const char* nmea, int length)
+ {
+@@ -156,6 +168,7 @@ GpsCallbacks sGpsCallbacks = {
+     location_callback,
+     status_callback,
+     sv_status_callback,
++    gnss_sv_status_callback,
+     nmea_callback,
+     set_capabilities_callback,
+     acquire_wakelock_callback,
+@@ -446,6 +459,7 @@ static void android_location_GpsLocationProvider_class_init_native(JNIEnv* env,
+     method_reportLocation = env->GetMethodID(clazz, "reportLocation", "(IDDDFFFJ)V");
+     method_reportStatus = env->GetMethodID(clazz, "reportStatus", "(I)V");
+     method_reportSvStatus = env->GetMethodID(clazz, "reportSvStatus", "()V");
++    method_reportGnssSvStatus = env->GetMethodID(clazz, "reportGnssSvStatus", "()V");
+     method_reportAGpsStatus = env->GetMethodID(clazz, "reportAGpsStatus", "(II[B)V");
+     method_reportNmea = env->GetMethodID(clazz, "reportNmea", "(J)V");
+     method_setEngineCapabilities = env->GetMethodID(clazz, "setEngineCapabilities", "(I)V");
+@@ -639,6 +653,44 @@ static jint android_location_GpsLocationProvider_read_sv_status(JNIEnv* env, job
+     env->ReleaseIntArrayElements(maskArray, mask, 0);
+     return (jint) num_svs;
+ }
++  
++static jint android_location_GpsLocationProvider_read_gnss_sv_status(JNIEnv* env, jobject obj,
++        jintArray prnArray, jfloatArray snrArray, jfloatArray elevArray, jfloatArray azumArray,
++        jbooleanArray ephemerisPresencesArray,
++        jbooleanArray almanacPresencesArray,
++        jbooleanArray usedInFixArray)
++{
++    // this should only be called from within a call to reportGnssSvStatus
++
++    jint* prns = env->GetIntArrayElements(prnArray, 0);
++    jfloat* snrs = env->GetFloatArrayElements(snrArray, 0);
++    jfloat* elev = env->GetFloatArrayElements(elevArray, 0);
++    jfloat* azim = env->GetFloatArrayElements(azumArray, 0);
++    jboolean* ephemeris_presences = env->GetBooleanArrayElements(ephemerisPresencesArray, 0);
++    jboolean* almanac_presences = env->GetBooleanArrayElements(almanacPresencesArray, 0);
++    jboolean* used_in_fix = env->GetBooleanArrayElements(usedInFixArray, 0);
++
++    int num_svs = sGnssSvStatus.num_svs;
++    for (int i = 0; i < num_svs; i++) {
++        prns[i] = sGnssSvStatus.sv_list[i].prn;
++        snrs[i] = sGnssSvStatus.sv_list[i].snr;
++        elev[i] = sGnssSvStatus.sv_list[i].elevation;
++        azim[i] = sGnssSvStatus.sv_list[i].azimuth;
++
++        ephemeris_presences[i] = sGnssSvStatus.sv_list[i].has_ephemeris ? 1 : 0;
++        almanac_presences[i] = sGnssSvStatus.sv_list[i].has_almanac ? 1 : 0;
++        used_in_fix[i] = sGnssSvStatus.sv_list[i].used_in_fix ? 1 : 0;
++    }
++
++    env->ReleaseIntArrayElements(prnArray, prns, 0);
++    env->ReleaseFloatArrayElements(snrArray, snrs, 0);
++    env->ReleaseFloatArrayElements(elevArray, elev, 0);
++    env->ReleaseFloatArrayElements(azumArray, azim, 0);
++    env->ReleaseBooleanArrayElements(ephemerisPresencesArray, ephemeris_presences, 0);
++    env->ReleaseBooleanArrayElements(almanacPresencesArray, almanac_presences, 0);
++    env->ReleaseBooleanArrayElements(usedInFixArray, used_in_fix, 0);
++    return (jint) num_svs;
++}
+ 
+ static void android_location_GpsLocationProvider_agps_set_reference_location_cellid(
+         JNIEnv* /* env */, jobject /* obj */, jint type, jint mcc, jint mnc, jint lac, jint cid, jint psc)
+@@ -1460,6 +1512,9 @@ static JNINativeMethod sMethods[] = {
+     {"native_read_sv_status",
+             "([I[F[F[F[I)I",
+             (void*)android_location_GpsLocationProvider_read_sv_status},
++    {"native_read_gnss_sv_status",
++            "([I[F[F[F[Z[Z[Z)I",
++            (void*)android_location_GpsLocationProvider_read_gnss_sv_status},
+     {"native_read_nmea", "([BI)I", (void*)android_location_GpsLocationProvider_read_nmea},
+     {"native_inject_time", "(JJI)V", (void*)android_location_GpsLocationProvider_inject_time},
+     {"native_inject_location",

@@ -1,0 +1,883 @@
+From 7df78698b1d137c997af1e0f4be49fec9f725310 Mon Sep 17 00:00:00 2001
+From: Wang Xuerui <idontknw.wang@gmail.com>
+Date: Tue, 8 Dec 2015 15:31:04 +0800
+Subject: [PATCH 1/5] libui: add MTK bits
+
+Change-Id: I85b8cff3c0cdbf8241e14cdf8b40bb0a604ce116
+---
+ include/ui/Fence.h                                 |   5 +
+ include/ui/GraphicBufferMapper.h                   |   4 +
+ include/ui/mediatek/IDumpTunnel.h                  |  49 +++++++++
+ include/ui/mediatek/RefBaseDump.h                  |  63 ++++++++++++
+ libs/ui/Android.mk                                 |  15 +++
+ libs/ui/GraphicBufferMapper.cpp                    |   7 ++
+ libs/ui/mediatek/Fence.cpp                         |  59 +++++++++++
+ libs/ui/mediatek/IDumpTunnel.cpp                   | 114 +++++++++++++++++++++
+ libs/ui/mediatek/RefBaseDump.cpp                   | 111 ++++++++++++++++++++
+ libs/ui/mediatek/test/Android.mk                   |   1 +
+ libs/ui/mediatek/test/RefBaseDumpTunnel/Android.mk |  15 +++
+ .../test/RefBaseDumpTunnel/RefBaseDumpTunnel.cpp   | 105 +++++++++++++++++++
+ .../test/RefBaseDumpTunnel/RefBaseDumpTunnel.h     |  17 +++
+ 13 files changed, 565 insertions(+)
+ create mode 100644 include/ui/mediatek/IDumpTunnel.h
+ create mode 100644 include/ui/mediatek/RefBaseDump.h
+ create mode 100644 libs/ui/mediatek/Fence.cpp
+ create mode 100644 libs/ui/mediatek/IDumpTunnel.cpp
+ create mode 100644 libs/ui/mediatek/RefBaseDump.cpp
+ create mode 100755 libs/ui/mediatek/test/Android.mk
+ create mode 100755 libs/ui/mediatek/test/RefBaseDumpTunnel/Android.mk
+ create mode 100644 libs/ui/mediatek/test/RefBaseDumpTunnel/RefBaseDumpTunnel.cpp
+ create mode 100644 libs/ui/mediatek/test/RefBaseDumpTunnel/RefBaseDumpTunnel.h
+
+diff --git a/include/ui/Fence.h b/include/ui/Fence.h
+index b431bd5..befd640 100644
+--- a/include/ui/Fence.h
++++ b/include/ui/Fence.h
+@@ -110,6 +110,11 @@ class Fence
+     const Fence& operator = (const Fence& rhs) const;
+ 
+     int mFenceFd;
++
++#ifdef MTK_HARDWARE
++private:
++    void dump(int fd);
++#endif
+ };
+ 
+ }; // namespace android
+diff --git a/include/ui/GraphicBufferMapper.h b/include/ui/GraphicBufferMapper.h
+index 9900624..3fda5e1 100644
+--- a/include/ui/GraphicBufferMapper.h
++++ b/include/ui/GraphicBufferMapper.h
+@@ -42,6 +42,10 @@ class GraphicBufferMapper : public Singleton<GraphicBufferMapper>
+ 
+     status_t unregisterBuffer(buffer_handle_t handle);
+ 
++    // MTK
++    status_t lock(buffer_handle_t handle,
++            int usage, const Rect& bounds, void** vaddr);
++
+     status_t lock(buffer_handle_t handle,
+             uint32_t usage, const Rect& bounds, void** vaddr);
+ 
+diff --git a/include/ui/mediatek/IDumpTunnel.h b/include/ui/mediatek/IDumpTunnel.h
+new file mode 100644
+index 0000000..8f9b663
+--- /dev/null
++++ b/include/ui/mediatek/IDumpTunnel.h
+@@ -0,0 +1,49 @@
++#ifndef ANDROID_GUI_IDUMPTUNNEL_H
++#define ANDROID_GUI_IDUMPTUNNEL_H
++
++#include <binder/IInterface.h>
++#include <utils/Singleton.h>
++
++namespace android
++{
++
++class IDumpTunnel : public IInterface {
++protected:
++    enum {
++        DUMPTUNNEL_DUMP = IBinder::FIRST_CALL_TRANSACTION
++    };
++
++public:
++    DECLARE_META_INTERFACE(DumpTunnel);
++
++    virtual status_t kickDump(String8& /*result*/, const char* /*prefix*/) = 0;
++};
++
++class BnDumpTunnel : public BnInterface<IDumpTunnel>
++{
++    virtual status_t onTransact(uint32_t code,
++                                const Parcel& data,
++                                Parcel* reply,
++                                uint32_t flags = 0);
++};
++
++// helper class for libgui_ext dynamic linking
++class DumpTunnelHelper : public Singleton<DumpTunnelHelper> {
++    void* mSoHandle;
++    bool (*mRegDumpPtr)(const sp<IDumpTunnel>&, const String8&);
++    bool (*mUnregDumpPtr)(const String8&);
++
++public:
++    DumpTunnelHelper();
++    virtual ~DumpTunnelHelper();
++
++    // register tunnel into guiext-server with a given key name
++    // and need to unregister it back
++    // in general usage, need to use identical key name for reg/unreg pair
++    bool regDump(const sp<IDumpTunnel>& tunnel, const String8& key);
++    bool unregDump(const String8& key);
++};
++
++
++};
++#endif
+diff --git a/include/ui/mediatek/RefBaseDump.h b/include/ui/mediatek/RefBaseDump.h
+new file mode 100644
+index 0000000..8431544
+--- /dev/null
++++ b/include/ui/mediatek/RefBaseDump.h
+@@ -0,0 +1,63 @@
++#ifndef ANDROID_REFBASE_DUMP_H__
++#define ANDROID_REFBASE_DUMP_H__
++
++#include <utils/String8.h>
++#include <utils/KeyedVector.h>
++#include <utils/Singleton.h>
++#include <ui/mediatek/IDumpTunnel.h>
++
++namespace android
++{
++class RefBaseMonitor;
++
++//-------------------------------------------------------------------------
++// RefBaseDump
++//-------------------------------------------------------------------------
++class RefBaseDump : public BnDumpTunnel {
++
++public:
++    RefBaseDump(RefBaseMonitor*);
++    virtual ~RefBaseDump();
++
++    // IDumpTunnel interface
++    virtual status_t kickDump(String8& /*result*/, const char* /*prefix*/);
++
++private:
++    RefBaseMonitor *mMonitor;
++};
++
++//-------------------------------------------------------------------------
++// RefBaseMonitor
++//-------------------------------------------------------------------------
++class RefBaseMonitor : public Singleton<RefBaseMonitor> {
++public:
++    RefBaseMonitor();
++    virtual ~RefBaseMonitor();
++
++    // add refbase to the monitored list
++    status_t monitor(RefBase* );
++
++    // remove refbase from the monitored list
++    status_t unmonitor(RefBase* );
++
++    // dump all elements in the monitored list and call printRefs if mIsTracking equals 1
++    status_t dump(String8& result);
++
++private:
++    status_t getProcessName();
++
++    // if trackMe needed
++    bool mIsTracking;
++
++    String8 mProcessName;
++
++    sp<RefBaseDump> mDump;
++
++    // the list where monitored refbase objects are saved
++    KeyedVector<RefBase*,int> RbList;
++
++    mutable Mutex mMutex;;
++};
++
++};
++#endif
+diff --git a/libs/ui/Android.mk b/libs/ui/Android.mk
+index a8eb67b..25f122a 100644
+--- a/libs/ui/Android.mk
++++ b/libs/ui/Android.mk
+@@ -45,6 +45,16 @@ LOCAL_SRC_FILES := \
+ 	Region.cpp \
+ 	UiConfig.cpp
+ 
++ifeq ($(BOARD_HAS_MTK_HARDWARE),true)
++LOCAL_SRC_FILES += \
++	mediatek/Fence.cpp \
++	mediatek/IDumpTunnel.cpp \
++	mediatek/RefBaseDump.cpp
++
++# just make everything compile for now... cleanups later
++LOCAL_CPPFLAGS := -std=c++1y -Weverything
++endif
++
+ LOCAL_SHARED_LIBRARIES := \
+ 	libcutils \
+ 	libhardware \
+@@ -52,6 +62,11 @@ LOCAL_SHARED_LIBRARIES := \
+ 	libutils \
+ 	liblog
+ 
++ifeq ($(BOARD_HAS_MTK_HARDWARE),true)
++LOCAL_SHARED_LIBRARIES += \
++	libbinder
++endif
++
+ ifneq ($(BOARD_FRAMEBUFFER_FORCE_FORMAT),)
+ LOCAL_CFLAGS += -DFRAMEBUFFER_FORCE_FORMAT=$(BOARD_FRAMEBUFFER_FORCE_FORMAT)
+ endif
+diff --git a/libs/ui/GraphicBufferMapper.cpp b/libs/ui/GraphicBufferMapper.cpp
+index 0580e16..48f871d 100644
+--- a/libs/ui/GraphicBufferMapper.cpp
++++ b/libs/ui/GraphicBufferMapper.cpp
+@@ -77,6 +77,13 @@ status_t GraphicBufferMapper::unregisterBuffer(buffer_handle_t handle)
+     return err;
+ }
+ 
++// MTK
++status_t GraphicBufferMapper::lock(buffer_handle_t handle,
++        int usage, const Rect& bounds, void** vaddr)
++{
++    return lock(handle, static_cast<uint32_t>(usage), bounds, vaddr);
++}
++
+ status_t GraphicBufferMapper::lock(buffer_handle_t handle,
+         uint32_t usage, const Rect& bounds, void** vaddr)
+ {
+diff --git a/libs/ui/mediatek/Fence.cpp b/libs/ui/mediatek/Fence.cpp
+new file mode 100644
+index 0000000..c604cd0
+--- /dev/null
++++ b/libs/ui/mediatek/Fence.cpp
+@@ -0,0 +1,59 @@
++#define LOG_TAG "Fence"
++
++#include <sync/sync.h>
++#include <ui/Fence.h>
++#include <unistd.h>
++
++#include <cutils/log.h>
++
++// ---------------------------------------------------------------------------
++
++const char* findKeyWord(const char* msg) {
++    android::String8 obj_name(msg);
++    obj_name.toLower();
++    const char* OBJ_NAME = obj_name.string();
++
++    // NOTE: keep these keywords in sync with MOF
++    android::String8 keyword("timeline_");
++    if (strstr(OBJ_NAME, "surfaceflinger")) {
++        keyword.append("SurfaceFlinger");
++    } else if (strstr(OBJ_NAME, "ovl_timeline")) {
++        keyword.append("ovl_timeline");
++    } else if (strstr(OBJ_NAME, "mali")) {
++        keyword.append("mali");
++    }
++
++    return keyword.string();
++}
++
++// ---------------------------------------------------------------------------
++
++namespace android {
++
++void Fence::dump(int fd) {
++    if (-1 == fd) return;
++
++    struct sync_fence_info_data *info = sync_fence_info(fd);
++    if (info) {
++        struct sync_pt_info *pt_info = NULL;
++        // status: active(0) signaled(1) error(<0)
++        ALOGD("fence(%s) status(%d)", info->name, info->status);
++
++        // iterate active/error sync points
++        while ((pt_info = sync_pt_info(info, pt_info))) {
++            if (NULL != pt_info && pt_info->status <= 0) {
++                int ts_sec = pt_info->timestamp_ns / 1000000000LL;
++                int ts_usec = (pt_info->timestamp_ns % 1000000000LL) / 1000LL;
++
++                String8 msg = String8::format(
++                    "sync point: timeline(%s) drv(%s) status(%d) sync_drv(%u) timestamp(%d.%06d)",
++                    pt_info->obj_name, pt_info->driver_name, pt_info->status,
++                    *(uint32_t *)pt_info->driver_data, ts_sec, ts_usec);
++                ALOGD("%s", msg.string());
++            }
++        }
++        sync_fence_info_free(info);
++    }
++}
++
++} // namespace android
+diff --git a/libs/ui/mediatek/IDumpTunnel.cpp b/libs/ui/mediatek/IDumpTunnel.cpp
+new file mode 100644
+index 0000000..d52f72a
+--- /dev/null
++++ b/libs/ui/mediatek/IDumpTunnel.cpp
+@@ -0,0 +1,114 @@
++#define LOG_TAG "DumpTunnel"
++
++#include <dlfcn.h>
++#include <utils/String8.h>
++#include <binder/Parcel.h>
++#include <cutils/log.h>
++#include <ui/mediatek/IDumpTunnel.h>
++
++namespace android {
++
++// client : proxy GuiEx class
++class BpDumpTunnel : public BpInterface<IDumpTunnel> {
++public:
++    BpDumpTunnel(const sp<IBinder>& impl)
++        :   BpInterface<IDumpTunnel>(impl) {
++    }
++
++    virtual status_t kickDump(String8& result, const char* prefix) {
++        Parcel data, reply;
++        data.writeInterfaceToken(IDumpTunnel::getInterfaceDescriptor());
++        data.writeString8(result);
++        data.writeCString(prefix);
++        status_t err = remote()->transact(DUMPTUNNEL_DUMP, data, &reply);
++        if (err != NO_ERROR) {
++            ALOGE("kickDump could not contact remote\n");
++            return err;
++        }
++        result = reply.readString8();
++        err = reply.readInt32();
++        return err;
++    }
++};
++
++IMPLEMENT_META_INTERFACE(DumpTunnel, "DumpTunnel");
++
++status_t BnDumpTunnel::onTransact(uint32_t code, const Parcel& data, Parcel* reply, uint32_t flags) {
++    switch (code) {
++        case DUMPTUNNEL_DUMP: {
++            CHECK_INTERFACE(IDumpTunnel, data, reply);
++            String8 result;
++            const char* prefix = NULL;
++            result = data.readString8();
++            prefix = data.readCString();
++
++            status_t ret = kickDump(result, prefix);
++            reply->writeString8(result);
++            reply->writeInt32(ret);
++            return NO_ERROR;
++        } break;
++    }
++    return BBinder::onTransact(code, data, reply, flags);
++}
++
++// ----------------------------------------------------------------------------
++
++ANDROID_SINGLETON_STATIC_INSTANCE(DumpTunnelHelper);
++
++DumpTunnelHelper::DumpTunnelHelper() :
++    mSoHandle(NULL),
++    mRegDumpPtr(NULL),
++    mUnregDumpPtr(NULL)
++{
++    typedef bool (*RegDumpPrototype)(const sp<IDumpTunnel>&, const String8&);
++    typedef bool (*UnregDumpPrototype)(const String8&);
++
++    // dlopen must set RTLD_LAZY flag because of performance issue
++    // need to use different path for 32/64 env
++#ifdef __LP64__
++    mSoHandle = dlopen("/system/lib64/libgui_ext.so", RTLD_LAZY);
++#else
++    mSoHandle = dlopen("/system/lib/libgui_ext.so", RTLD_LAZY);
++#endif
++    if (mSoHandle) {
++        mRegDumpPtr = reinterpret_cast<RegDumpPrototype>(dlsym(mSoHandle, "regDump"));
++        mUnregDumpPtr = reinterpret_cast<UnregDumpPrototype>(dlsym(mSoHandle, "unregDump"));
++        if (NULL == mRegDumpPtr) {
++            ALOGE("finding regDump() failed");
++        }
++        if (NULL == mUnregDumpPtr) {
++            ALOGE("finding unregDump() failed");
++        }
++    } else {
++        ALOGE("open libgui_ext failed");
++    }
++}
++
++DumpTunnelHelper::~DumpTunnelHelper() {
++    if(mSoHandle != NULL)
++        dlclose(mSoHandle);
++}
++
++bool DumpTunnelHelper::regDump(const sp<IDumpTunnel>& tunnel, const String8& key) {
++    bool result = false;
++    if (NULL == mRegDumpPtr) {
++        ALOGE("finding regDump() failed");
++        return result;
++    }
++    result = mRegDumpPtr(tunnel, key);
++
++    return result;
++}
++
++bool DumpTunnelHelper::unregDump(const String8& key) {
++    bool result = false;
++    if (NULL == mUnregDumpPtr) {
++        ALOGE("finding unregDump() failed");
++        return result;
++    }
++    result = mUnregDumpPtr(key);
++
++    return result;
++}
++
++};
+diff --git a/libs/ui/mediatek/RefBaseDump.cpp b/libs/ui/mediatek/RefBaseDump.cpp
+new file mode 100644
+index 0000000..333add4
+--- /dev/null
++++ b/libs/ui/mediatek/RefBaseDump.cpp
+@@ -0,0 +1,111 @@
++#define LOG_TAG "RefBaseDump"
++
++#if 0
++#define RBD_LOGV(x, ...) ALOGV(x, ##__VA_ARGS__)
++#define RBD_LOGD(x, ...) ALOGD(x, ##__VA_ARGS__)
++#define RBD_LOGI(x, ...) ALOGI(x, ##__VA_ARGS__)
++#define RBD_LOGW(x, ...) ALOGW(x, ##__VA_ARGS__)
++#define RBD_LOGE(x, ...) ALOGE(x, ##__VA_ARGS__)
++#else
++#define RBD_LOGV(x, ...)
++#define RBD_LOGD(x, ...)
++#define RBD_LOGI(x, ...)
++#define RBD_LOGW(x, ...)
++#define RBD_LOGE(x, ...)
++#endif
++
++#include <cutils/log.h>
++#include <cutils/process_name.h>
++#include <cutils/properties.h>
++#include <ui/mediatek/RefBaseDump.h>
++
++namespace android {
++
++//-------------------------------------------------------------------------
++// RefBaseDump
++//-------------------------------------------------------------------------
++
++RefBaseDump::RefBaseDump(RefBaseMonitor* pMonitor)
++    : mMonitor(pMonitor) {
++}
++
++RefBaseDump::~RefBaseDump() {
++}
++
++status_t RefBaseDump::kickDump(String8& result, const char* prefix) {
++    return mMonitor->dump(result);
++}
++
++//-------------------------------------------------------------------------
++// RefBaseMonitor
++//-------------------------------------------------------------------------
++
++ANDROID_SINGLETON_STATIC_INSTANCE(RefBaseMonitor)
++
++RefBaseMonitor::RefBaseMonitor() {
++    char value[PROPERTY_VALUE_MAX];
++    RBD_LOGI("RefBaseMonitor ctor - %p", this);
++    getProcessName();
++    property_get("debug.rb.dump", value, "Mary had a little lamb");
++    mIsTracking = (-1 != mProcessName.find(value));
++    mDump = new RefBaseDump(this);
++    DumpTunnelHelper::getInstance().regDump(mDump, String8::format("RB-%p", this));
++}
++
++RefBaseMonitor::~RefBaseMonitor() {
++    RBD_LOGI("RefBaseMonitor dtor - %p", this);
++    DumpTunnelHelper::getInstance().unregDump(String8::format("RB-%p", this));
++}
++
++status_t RefBaseMonitor::monitor(RefBase *pRb) {
++    Mutex::Autolock _l(mMutex);
++    if (mIsTracking) {
++        pRb->trackMe(true, false);
++    }
++    RbList.add(pRb, 0);
++    return NO_ERROR;
++}
++
++status_t RefBaseMonitor::unmonitor(RefBase *pRb) {
++    Mutex::Autolock _l(mMutex);
++    RbList.removeItem(pRb);
++    return NO_ERROR;
++}
++
++status_t RefBaseMonitor::dump(String8& result) {
++    int listSz;
++    RefBase *pRb;
++    Mutex::Autolock _l(mMutex);
++    RBD_LOGI("RefBaseMonitor Dump - %p", this);
++    listSz = RbList.size();
++    result.appendFormat("\t  [%8p]    RefCnt   %s", this, mProcessName.string());
++    result.append(mIsTracking ? " <- tracking\n" : "\n");
++    result.append("\t  -----------------------\n");
++
++    for (int i = 0; i < listSz; i++) {
++        pRb = RbList.keyAt(i);
++        if (mIsTracking) {
++            pRb->printRefs();
++        }
++        result.appendFormat("\t   %2d) %8p %4d\n", i, pRb, pRb->getStrongCount());
++    }
++    result.append("\t*****************************************************\n");
++    return NO_ERROR;
++}
++
++status_t RefBaseMonitor::getProcessName() {
++    int pid = getpid();
++    FILE *fp = fopen(String8::format("/proc/%d/cmdline", pid), "r");
++    if (NULL != fp) {
++        const size_t size = 64;
++        char proc_name[size];
++        fgets(proc_name, size, fp);
++        fclose(fp);
++        mProcessName = proc_name;
++    } else {
++        mProcessName = "unknownProcess";
++    }
++    return NO_ERROR;
++}
++
++}
+diff --git a/libs/ui/mediatek/test/Android.mk b/libs/ui/mediatek/test/Android.mk
+new file mode 100755
+index 0000000..82e7389
+--- /dev/null
++++ b/libs/ui/mediatek/test/Android.mk
+@@ -0,0 +1 @@
++#barrier
+diff --git a/libs/ui/mediatek/test/RefBaseDumpTunnel/Android.mk b/libs/ui/mediatek/test/RefBaseDumpTunnel/Android.mk
+new file mode 100755
+index 0000000..79edcbc
+--- /dev/null
++++ b/libs/ui/mediatek/test/RefBaseDumpTunnel/Android.mk
+@@ -0,0 +1,15 @@
++LOCAL_PATH:= $(call my-dir)
++include $(CLEAR_VARS)
++
++LOCAL_SRC_FILES:= \
++    RefBaseDumpTunnel.cpp
++
++LOCAL_SHARED_LIBRARIES := \
++    libutils \
++    libui
++
++LOCAL_MODULE:= test-RefBaseDumpTunnel
++
++LOCAL_MODULE_TAGS := tests
++
++include $(BUILD_EXECUTABLE)
+diff --git a/libs/ui/mediatek/test/RefBaseDumpTunnel/RefBaseDumpTunnel.cpp b/libs/ui/mediatek/test/RefBaseDumpTunnel/RefBaseDumpTunnel.cpp
+new file mode 100644
+index 0000000..f935808
+--- /dev/null
++++ b/libs/ui/mediatek/test/RefBaseDumpTunnel/RefBaseDumpTunnel.cpp
+@@ -0,0 +1,105 @@
++#include <stdio.h>
++#include <time.h>
++#include <utils/StrongPointer.h>
++#include "RefBaseDumpTunnel.h"
++
++using namespace android;
++
++void RefBaseMonitorTest_Assignment(int testCnt, struct timespec *tsS, struct timespec *tsE ) {
++    sp<RefBaseTest> sp1 = new RefBaseTest();
++    sp<RefBaseTest> sp2;
++    //printf("[1]");
++    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, tsS);
++    //printf("with RefBaseTracking....S:%d(ns)\n",tsS.tv_nsec);
++    for (int i = 0; i < testCnt; i++) {
++         sp2 = sp1;
++    }
++    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, tsE);
++}
++
++void RefBaseMonitorTest_CtorDtor(int testCnt, struct timespec *tsS, struct timespec *tsE ) {
++    RefBaseTest *rbtmp;
++    //printf("[2]");
++    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, tsS);
++    //printf("with RefBaseTracking....S:%d(ns)\n",tsS.tv_nsec);
++    for (int i = 0; i < testCnt; i++) {
++        rbtmp = new RefBaseTest();
++        delete rbtmp;
++    }
++    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, tsE);
++    //printf("with RefBaseTracking....E:%d(ns)\n",tsE.tv_nsec);
++}
++
++void RefBaseMonitorTest_CtorDtorAssgnment(int testCnt, struct timespec *tsS, struct timespec *tsE ) {
++    sp<RefBaseTest> sp1 = new RefBaseTest();
++    //printf("[3]");
++    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, tsS);
++    //printf("with RefBaseTracking....S:%d(ns)\n",tsS.tv_nsec);
++    for (int i = 0; i < testCnt; i++) {
++        sp1 = new RefBaseTest();
++    }
++    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, tsE);
++    //printf("with RefBaseTracking....E:%d(ns)\n",tsE.tv_nsec);
++}
++
++void RefBaseMonitorSubTest (int testRound, int testCntPerRound, void (*testFunc)(int, struct timespec *, struct timespec *)) {
++    struct timespec tsS;
++    struct timespec tsE;
++    int tmp;
++    int totalCnt;
++    int timeWithTracking = 0;
++
++    for(int j = 0; j < testRound; j++) {
++        //printf("Rnd: %d",j);
++        (*testFunc)(testCntPerRound, &tsS, &tsE);
++
++        tmp = tsE.tv_nsec - tsS.tv_nsec;
++        if (tmp < 0) {
++            tmp = 1000000000L + tsE.tv_nsec - tsS.tv_nsec;
++        }
++        timeWithTracking += tmp;
++        //printf("with RefBaseTracking....D:%d(ns)\n",tmp);
++    }
++    totalCnt = testRound * testCntPerRound;
++    printf("%12d(ns) = TotalTime: %12d(ns) / TestCnt: %d \n", timeWithTracking / totalCnt, timeWithTracking, totalCnt);
++
++}
++
++void RefBaseMonitorTest(int recCount, int testRound, int testCntPerRound) {
++    int tmp = recCount;
++    if (recCount == 0) {
++        RefBaseMonitorSubTest(testRound, testCntPerRound, RefBaseMonitorTest_Assignment);
++        RefBaseMonitorSubTest(testRound, testCntPerRound, RefBaseMonitorTest_CtorDtor);
++        RefBaseMonitorSubTest(testRound, testCntPerRound, RefBaseMonitorTest_CtorDtorAssgnment);
++    } else {
++        recCount--;
++        RefBaseMonitorTest(recCount, testRound, testCntPerRound);
++    }
++    printf("(stack:%d)", tmp);
++}
++
++int main(int argc, char** argv) {
++    int recLv;
++    int testRound;
++    int testCntPerRound;
++    int recCntTime;
++
++    if (argc == 5) {
++        sscanf(argv[1], "%d", &recLv);
++        sscanf(argv[2], "%d", &recCntTime);
++        sscanf(argv[3], "%d", &testRound);
++        sscanf(argv[4], "%d", &testCntPerRound);
++        if ((recLv >= 0) && (recCntTime > 0) && (testRound > 0) && (testCntPerRound > 0)) {
++            for (int i = 0; i < recCntTime; i++) {
++                printf("\nrec[ n + %d ]\n", i + recLv);
++                RefBaseMonitorTest(i + recLv, testRound, testCntPerRound);
++            }
++            printf("\n\n");
++            return 0;
++        }
++    }
++    printf("test-RefBaseDumpTunnel recLv recTimes testRnd testCntPerRnd\n");
++    return 0;
++}
++
++
+diff --git a/libs/ui/mediatek/test/RefBaseDumpTunnel/RefBaseDumpTunnel.h b/libs/ui/mediatek/test/RefBaseDumpTunnel/RefBaseDumpTunnel.h
+new file mode 100644
+index 0000000..5ba0025
+--- /dev/null
++++ b/libs/ui/mediatek/test/RefBaseDumpTunnel/RefBaseDumpTunnel.h
+@@ -0,0 +1,17 @@
++#include <utils/RefBase.h>
++#include <ui/mediatek/RefBaseDumpTunnel.h>
++
++namespace android
++{
++
++class RefBaseTest: public RefBase{
++    public:
++        RefBaseTest(){
++            RefBaseMonitor::getInstance().monitor(this);
++        }
++        ~RefBaseTest(){
++            RefBaseMonitor::getInstance().unmonitor(this);
++        }
++};
++
++};
+
+From 86e0df9e8ae0791474ca4797fa528210831592eb Mon Sep 17 00:00:00 2001
+From: Wang Xuerui <idontknw.wang@gmail.com>
+Date: Tue, 8 Dec 2015 15:36:34 +0800
+Subject: [PATCH 2/5] libui: fix incomplete ifdef MTK_HARDWARE guard
+
+Change-Id: I321dd66550d51adce9f10a1bd0cebfc497f6711a
+---
+ include/ui/GraphicBufferMapper.h | 3 ++-
+ libs/ui/GraphicBufferMapper.cpp  | 3 ++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/include/ui/GraphicBufferMapper.h b/include/ui/GraphicBufferMapper.h
+index 3fda5e1..46851f5 100644
+--- a/include/ui/GraphicBufferMapper.h
++++ b/include/ui/GraphicBufferMapper.h
+@@ -42,9 +42,10 @@ class GraphicBufferMapper : public Singleton<GraphicBufferMapper>
+ 
+     status_t unregisterBuffer(buffer_handle_t handle);
+ 
+-    // MTK
++#ifdef MTK_HARDWARE
+     status_t lock(buffer_handle_t handle,
+             int usage, const Rect& bounds, void** vaddr);
++#endif
+ 
+     status_t lock(buffer_handle_t handle,
+             uint32_t usage, const Rect& bounds, void** vaddr);
+diff --git a/libs/ui/GraphicBufferMapper.cpp b/libs/ui/GraphicBufferMapper.cpp
+index 48f871d..a940b8b 100644
+--- a/libs/ui/GraphicBufferMapper.cpp
++++ b/libs/ui/GraphicBufferMapper.cpp
+@@ -77,12 +77,13 @@ status_t GraphicBufferMapper::unregisterBuffer(buffer_handle_t handle)
+     return err;
+ }
+ 
+-// MTK
++#ifdef MTK_HARDWARE
+ status_t GraphicBufferMapper::lock(buffer_handle_t handle,
+         int usage, const Rect& bounds, void** vaddr)
+ {
+     return lock(handle, static_cast<uint32_t>(usage), bounds, vaddr);
+ }
++#endif
+ 
+ status_t GraphicBufferMapper::lock(buffer_handle_t handle,
+         uint32_t usage, const Rect& bounds, void** vaddr)
+
+From 66f30e8883b0452d87b4c8cd2b847c81034c8103 Mon Sep 17 00:00:00 2001
+From: Wang Xuerui <idontknw.wang@gmail.com>
+Date: Sat, 9 Jan 2016 16:07:16 +0800
+Subject: [PATCH 3/5] libui: GraphicBufferMapper: fix ambiguous overload
+ introduced by MTK fix
+
+Change-Id: I213b81e9004dd317b71925d617cf36ea19ad83d7
+---
+ include/ui/GraphicBufferMapper.h | 14 +++++++++-----
+ libs/ui/GraphicBufferMapper.cpp  | 10 ++++++++--
+ 2 files changed, 17 insertions(+), 7 deletions(-)
+
+diff --git a/include/ui/GraphicBufferMapper.h b/include/ui/GraphicBufferMapper.h
+index 46851f5..52eba1c 100644
+--- a/include/ui/GraphicBufferMapper.h
++++ b/include/ui/GraphicBufferMapper.h
+@@ -42,11 +42,6 @@ class GraphicBufferMapper : public Singleton<GraphicBufferMapper>
+ 
+     status_t unregisterBuffer(buffer_handle_t handle);
+ 
+-#ifdef MTK_HARDWARE
+-    status_t lock(buffer_handle_t handle,
+-            int usage, const Rect& bounds, void** vaddr);
+-#endif
+-
+     status_t lock(buffer_handle_t handle,
+             uint32_t usage, const Rect& bounds, void** vaddr);
+ 
+@@ -77,6 +72,15 @@ class GraphicBufferMapper : public Singleton<GraphicBufferMapper>
+     gralloc_module_t const *mAllocMod;
+ };
+ 
++#ifdef MTK_HARDWARE
++extern "C" {
++
++    status_t _ZN7android19GraphicBufferMapper4lockEPK13native_handleiRKNS_4RectEPPv(
++            buffer_handle_t handle, int usage, const Rect& bounds, void** vaddr);
++
++}
++#endif
++
+ // ---------------------------------------------------------------------------
+ 
+ }; // namespace android
+diff --git a/libs/ui/GraphicBufferMapper.cpp b/libs/ui/GraphicBufferMapper.cpp
+index a940b8b..aae2d2f 100644
+--- a/libs/ui/GraphicBufferMapper.cpp
++++ b/libs/ui/GraphicBufferMapper.cpp
+@@ -78,10 +78,16 @@ status_t GraphicBufferMapper::unregisterBuffer(buffer_handle_t handle)
+ }
+ 
+ #ifdef MTK_HARDWARE
+-status_t GraphicBufferMapper::lock(buffer_handle_t handle,
++extern "C" {
++
++extern status_t _ZN7android19GraphicBufferMapper4lockEPK13native_handlejRKNS_4RectEPPv(buffer_handle_t, uint32_t, const Rect&, void**);
++
++status_t _ZN7android19GraphicBufferMapper4lockEPK13native_handleiRKNS_4RectEPPv(buffer_handle_t handle,
+         int usage, const Rect& bounds, void** vaddr)
+ {
+-    return lock(handle, static_cast<uint32_t>(usage), bounds, vaddr);
++    return _ZN7android19GraphicBufferMapper4lockEPK13native_handlejRKNS_4RectEPPv(handle, static_cast<uint32_t>(usage), bounds, vaddr);
++}
++
+ }
+ #endif
+ 
+
+From 4913e7f5030c0430cfdb4478d84f10cb429ec1ce Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Mon, 11 Jan 2016 18:56:29 +0800
+Subject: [PATCH 4/5] Fix the compiling of libui.
+
+---
+ libs/ui/Android.mk | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/libs/ui/Android.mk b/libs/ui/Android.mk
+index 25f122a..0c6b2ab 100644
+--- a/libs/ui/Android.mk
++++ b/libs/ui/Android.mk
+@@ -63,6 +63,7 @@ LOCAL_SHARED_LIBRARIES := \
+ 	liblog
+ 
+ ifeq ($(BOARD_HAS_MTK_HARDWARE),true)
++LOCAL_CFLAGS += -DMTK_HARDWARE
+ LOCAL_SHARED_LIBRARIES += \
+ 	libbinder
+ endif
+
+From 99784b10bfc4933844a986493ff57fbbe42d4056 Mon Sep 17 00:00:00 2001
+From: ferhung <ferhung27@gmail.com>
+Date: Fri, 18 Mar 2016 20:59:05 +0800
+Subject: [PATCH 5/5] Fix egl problems (game crash)  by fire855
+
+---
+ opengl/libs/EGL/eglApi.cpp | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/opengl/libs/EGL/eglApi.cpp b/opengl/libs/EGL/eglApi.cpp
+index 4d9eaf5..321ddb3 100644
+--- a/opengl/libs/EGL/eglApi.cpp
++++ b/opengl/libs/EGL/eglApi.cpp
+@@ -151,11 +151,13 @@ static const extention_map_t sExtensionMap[] = {
+     { "eglGetSyncAttribKHR",
+             (__eglMustCastToProperFunctionPointerType)&eglGetSyncAttribKHR },
+ 
++#ifndef MTK_HARDWARE
+     // EGL_NV_system_time
+     { "eglGetSystemTimeFrequencyNV",
+             (__eglMustCastToProperFunctionPointerType)&eglGetSystemTimeFrequencyNV },
+     { "eglGetSystemTimeNV",
+             (__eglMustCastToProperFunctionPointerType)&eglGetSystemTimeNV },
++#endif
+ 
+     // EGL_KHR_wait_sync
+     { "eglWaitSyncKHR",
+@@ -1826,6 +1828,7 @@ EGLBoolean eglPresentationTimeANDROID(EGLDisplay dpy, EGLSurface surface,
+ // ----------------------------------------------------------------------------
+ // NVIDIA extensions
+ // ----------------------------------------------------------------------------
++#ifndef MTK_HARDWARE
+ EGLuint64NV eglGetSystemTimeFrequencyNV()
+ {
+     clearError();
+@@ -1861,7 +1864,7 @@ EGLuint64NV eglGetSystemTimeNV()
+ 
+     return setErrorQuiet(EGL_BAD_DISPLAY, 0);
+ }
+-
++#endif
+ // ----------------------------------------------------------------------------
+ // Partial update extension
+ // ----------------------------------------------------------------------------

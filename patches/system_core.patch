@@ -1,0 +1,634 @@
+From c82df50931459c83efa2354d28fd19647d61c68e Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 17:01:12 +0800
+Subject: [PATCH 1/9] MediaTek: init.rc: updation for MTK.
+
+---
+ rootdir/init.rc | 26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/rootdir/init.rc b/rootdir/init.rc
+index 78adacc..34d22b9 100644
+--- a/rootdir/init.rc
++++ b/rootdir/init.rc
+@@ -601,7 +601,7 @@ on property:ro.debuggable=1
+ service adbd /sbin/adbd --root_seclabel=u:r:su:s0
+     class core
+     socket adbd stream 660 system system
+-    disabled
++    enabled
+     seclabel u:r:adbd:s0
+ 
+ # adbd on at boot in emulator
+@@ -648,29 +648,29 @@ service debuggerd64 /system/bin/debuggerd64
+     class main
+     writepid /dev/cpuset/system-background/tasks
+ 
+-service ril-daemon /system/bin/rild
+-    class main
+-    socket rild stream 660 root radio
+-    socket sap_uim_socket1 stream 660 bluetooth bluetooth
+-    socket rild-debug stream 660 radio system
+-    user root
+-    group radio cache inet misc audio log qcom_diag
++#service ril-daemon /system/bin/rild
++#    class main
++#    socket rild stream 660 root radio
++#    socket sap_uim_socket1 stream 660 bluetooth bluetooth
++#    socket rild-debug stream 660 radio system
++#    user root
++#    group radio cache inet misc audio log qcom_diag
+ 
+ service surfaceflinger /system/bin/surfaceflinger
+     class core
+-    user system
++    user root
+     group graphics drmrpc
+     onrestart restart zygote
+ 
+ service drm /system/bin/drmserver
+     class main
+     user drm
+-    group drm system inet drmrpc
++    group drm system inet drmrpc sdcard_r
+ 
+ service media /system/bin/mediaserver
+     class main
+-    user media
+-    group audio camera inet net_bt net_bt_admin net_bw_acct drmrpc mediadrm qcom_diag
++    user root
++    group audio camera inet net_bt net_bt_admin net_bw_acct drmrpc mediadrm qcom_diag media sdcard_r system net_bt_stack
+     ioprio rt 4
+ 
+ # One shot invocation to deal with encrypted volume.
+@@ -690,7 +690,7 @@ service encrypt /system/bin/vdc --wait cryptfs enablecrypto inplace default noui
+ service bootanim /system/bin/bootanimation
+     class core
+     user graphics
+-    group graphics audio
++    group graphics media audio
+     disabled
+     oneshot
+ 
+
+From 312d2da139f064b2e244b6329fa35c946e75c6ce Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 17:03:36 +0800
+Subject: [PATCH 2/9] MediaTek: setting selinux to permissive.
+
+---
+ init/init.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/init/init.cpp b/init/init.cpp
+index 58d7d34..fcd7187 100644
+--- a/init/init.cpp
++++ b/init/init.cpp
+@@ -929,6 +929,8 @@ static bool selinux_is_disabled(void)
+ 
+ static bool selinux_is_enforcing(void)
+ {
++    return false;  /*return false then set to permissive*/
++
+     if (ALLOW_DISABLE_SELINUX) {
+         return selinux_status_from_cmdline() == SELINUX_ENFORCING;
+     }
+
+From 586fa2e0f73ba4dcfcbaa83ac0c294abb694254d Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 17:06:12 +0800
+Subject: [PATCH 3/9] MediaTek: Add support for mt6582 & mt6592.
+
+---
+ init/Android.mk | 8 ++++++++
+ init/init.cpp   | 8 +++++++-
+ 2 files changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/init/Android.mk b/init/Android.mk
+index aa32236..e0e6739 100644
+--- a/init/Android.mk
++++ b/init/Android.mk
+@@ -68,6 +68,14 @@ ifneq ($(TARGET_IGNORE_RO_BOOT_REVISION),)
+ LOCAL_CFLAGS += -DIGNORE_RO_BOOT_REVISION
+ endif
+ 
++ifeq ($(TARGET_BOARD_PLATFORM),mt6582)
++LOCAL_CFLAGS += -DMTK_MT6582
++endif
++
++ifeq ($(TARGET_BOARD_PLATFORM),mt6592)
++LOCAL_CFLAGS += -DMTK_MT6592
++endif
++
+ LOCAL_MODULE:= init
+ LOCAL_C_INCLUDES += \
+     external/zlib \
+diff --git a/init/init.cpp b/init/init.cpp
+index fcd7187..f20c1d5 100644
+--- a/init/init.cpp
++++ b/init/init.cpp
+@@ -817,7 +817,13 @@ static void export_kernel_boot_props() {
+         { "ro.boot.mode",       "ro.bootmode",   "unknown", },
+         { "ro.boot.baseband",   "ro.baseband",   "unknown", },
+         { "ro.boot.bootloader", "ro.bootloader", "unknown", },
+-        { "ro.boot.hardware",   "ro.hardware",   "unknown", },
++#ifdef MTK_MT6582     
++        { "ro.boot.hardware",   "ro.hardware",   "mt6582", },
++#endif
++#ifdef MTK_MT6592     
++        { "ro.boot.hardware",   "ro.hardware",   "mt6592", },
++#endif  
++
+ #ifndef IGNORE_RO_BOOT_REVISION
+         { "ro.boot.revision",   "ro.revision",   "0", },
+ #endif
+
+From a81946ba921f8f149ac0ccd4b773e3e8563388e3 Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 17:08:19 +0800
+Subject: [PATCH 4/9] MediaTek: Add mediatek hack for EGL.
+
+---
+ libutils/Android.mk        |  4 ++++
+ libutils/MediatekHacks.cpp | 21 +++++++++++++++++++++
+ 2 files changed, 25 insertions(+)
+ create mode 100644 libutils/MediatekHacks.cpp
+
+diff --git a/libutils/Android.mk b/libutils/Android.mk
+index 23a5c59..040586a 100644
+--- a/libutils/Android.mk
++++ b/libutils/Android.mk
+@@ -83,6 +83,10 @@ LOCAL_CFLAGS += -DALIGN_DOUBLE
+ endif
+ LOCAL_CFLAGS += -Werror
+ 
++ifeq ($(BOARD_HAS_MTK_HARDWARE),true)  
++LOCAL_SRC_FILES += MediatekHacks.cpp  
++endif  
++
+ LOCAL_STATIC_LIBRARIES := \
+ 	libcutils \
+ 	libc
+diff --git a/libutils/MediatekHacks.cpp b/libutils/MediatekHacks.cpp
+new file mode 100644
+index 0000000..c010831
+--- /dev/null
++++ b/libutils/MediatekHacks.cpp
+@@ -0,0 +1,21 @@
++extern "C" {
++ void _ZN7android11IDumpTunnel11asInterfaceERKNS_2spINS_7IBinderEEE(){}
++ void _ZN7android11BufferQueueC1ERKNS_2spINS_19IGraphicBufferAllocEEE(){}
++ void _ZN7android22IGraphicBufferConsumer10BufferItemC1Ev(){}
++ void _ZN7android9CallStackC1EPKci(char const*, int);
++ void _ZN7android9CallStack6updateEii(int, int);
++
++ void _ZN7android9CallStackC1EPKcii(char const* logtag, int ignoreDepth, int maxDepth){
++  maxDepth = maxDepth-1;
++  maxDepth = maxDepth+1;
++  _ZN7android9CallStackC1EPKci(logtag, ignoreDepth);
++  
++ }
++
++ void _ZN7android9CallStack6updateEiii(int ignoreDepth, int maxDepth, int tid){
++  maxDepth = maxDepth-1;
++  maxDepth = maxDepth+1; 
++  _ZN7android9CallStack6updateEii(ignoreDepth, tid);
++ }
++}
++
+
+From a15b30f3df8e72571be6d831daa853fedf59861c Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 17:09:53 +0800
+Subject: [PATCH 5/9] MediaTek: fix offline charging mod.
+
+---
+ init/init.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/init/init.cpp b/init/init.cpp
+index f20c1d5..3932cec 100644
+--- a/init/init.cpp
++++ b/init/init.cpp
+@@ -1024,7 +1024,7 @@ static int charging_mode_booting(void) {
+         return 0;
+ 
+     close(f);
+-    return ('1' == cmb);
++    return ('8' == cmb);
+ #endif
+ }
+ 
+
+From 3b389be272b9c45e05b681967d0acf3195d8ee3a Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 17:11:36 +0800
+Subject: [PATCH 6/9] MediaTek: prevent log spamming of audio.
+
+---
+ liblog/logd_write.c | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/liblog/logd_write.c b/liblog/logd_write.c
+index 7f772af..5ad8900 100644
+--- a/liblog/logd_write.c
++++ b/liblog/logd_write.c
+@@ -368,6 +368,26 @@ int __android_log_buf_write(int bufID, int prio, const char *tag, const char *ms
+     if (!tag)
+         tag = "";
+ 
++    // MediaTek: Prevent log spamming of audio.
++    if (!strcmp(tag, "AudioMTKFilterManager") ||
++        !strcmp(tag, "AudioMTKFilter") ||
++        !strcmp(tag, "AudioMTKStreamOut") ||
++        !strcmp(tag, "AudioVPWStreamIn") ||
++        !strcmp(tag, "AudioDigitalControl") ||
++        !strcmp(tag, "AudioLoopbackController") ||
++        !strcmp(tag, "AudioMTKVolumeController") ||
++        !strcmp(tag, "AudioDigitalControl") ||
++        !strcmp(tag, "AudioAnalogControl") ||
++        !strcmp(tag, "AudioAfeReg") ||
++        !strcmp(tag, "AudioAnalogReg") ||
++        !strcmp(tag, "AudioPlatformDevice") ||
++        !strcmp(tag, "AudioMachineDevice") ||
++        !strcmp(tag, "MtkAudioLoud") ||
++        !strcmp(tag, "LoopbackManager") ||
++        !strcmp(tag, "AudioInterConnection")) {
++            return 0;
++    }
++
+     /* XXX: This needs to go! */
+     if ((bufID != LOG_ID_RADIO) &&
+          (!strcmp(tag, "HTC_RIL") ||
+
+From 8af5a7a286010a735aa094e9f8d6122d28c22a47 Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 23:31:19 +0800
+Subject: [PATCH 7/9] MediaTek: mkbootimg: support MTK boot.img format.
+
+---
+ mkbootimg/bootimg.h       |  2 ++
+ mkbootimg/mkbootimg.c     | 54 ++++++++++++++++++++++++++++++++++++++++-------
+ mkbootimg/unpackbootimg.c | 47 ++++++++++++++++++++++++++++++-----------
+ 3 files changed, 83 insertions(+), 20 deletions(-)
+
+diff --git a/mkbootimg/bootimg.h b/mkbootimg/bootimg.h
+index e66e269..b348bf7d 100644
+--- a/mkbootimg/bootimg.h
++++ b/mkbootimg/bootimg.h
+@@ -28,6 +28,8 @@ typedef struct boot_img_hdr boot_img_hdr;
+ #define BOOT_ARGS_SIZE 512
+ #define BOOT_EXTRA_ARGS_SIZE 1024
+ 
++#define MTK_HEADER_SIZE 512
++
+ struct boot_img_hdr
+ {
+     uint8_t magic[BOOT_MAGIC_SIZE];
+diff --git a/mkbootimg/mkbootimg.c b/mkbootimg/mkbootimg.c
+index ec7c61f..97ff3d7 100644
+--- a/mkbootimg/mkbootimg.c
++++ b/mkbootimg/mkbootimg.c
+@@ -26,10 +26,12 @@
+ #include "mincrypt/sha.h"
+ #include "bootimg.h"
+ 
+-static void *load_file(const char *fn, unsigned *_sz)
++static void *load_file(const char *fn, unsigned *_sz, int is_mtk, const char *mtk_fn)
+ {
+     char *data;
++    char *buf_start;
+     int sz;
++    int buf_sz;
+     int fd;
+ 
+     data = 0;
+@@ -41,13 +43,36 @@ static void *load_file(const char *fn, unsigned *_sz)
+ 
+     if(lseek(fd, 0, SEEK_SET) != 0) goto oops;
+ 
+-    data = (char*) malloc(sz);
++    buf_sz = sz + (is_mtk ? MTK_HEADER_SIZE : 0);
++    data = buf_start = (char*) malloc(buf_sz);
+     if(data == 0) goto oops;
+ 
+-    if(read(fd, data, sz) != sz) goto oops;
++    if (is_mtk) {
++        /* MTK magic */
++        data[0] = 0x88;
++        data[1] = 0x16;
++        data[2] = 0x88;
++        data[3] = 0x58;
++
++        /* file length in little endian */
++        data[4] = sz & 0xFF;
++        data[5] = (sz >> 8) & 0xFF;
++        data[6] = (sz >> 16) & 0xFF;
++        data[7] = (sz >> 24) & 0xFF;
++
++        /* MTK "file name" */
++        strncpy(data + 8, mtk_fn, 32);
++
++        /* MTK header padding */
++        memset(data + 40, 0xff, MTK_HEADER_SIZE - 40);
++
++        buf_start += MTK_HEADER_SIZE;
++    }
++
++    if(read(fd, buf_start, sz) != sz) goto oops;
+     close(fd);
+ 
+-    if(_sz) *_sz = sz;
++    if(_sz) *_sz = buf_sz;
+     return data;
+ 
+ oops:
+@@ -71,6 +96,7 @@ int usage(void)
+             "       [ --second_offset <address> ]\n"
+             "       [ --tags_offset <address> ]\n"
+             "       [ --id ]\n"
++            "       [ --mtk <boot|recovery> ]\n"
+             "       -o|--output <filename>\n"
+             );
+     return 1;
+@@ -111,6 +137,8 @@ int main(int argc, char **argv)
+ {
+     boot_img_hdr hdr;
+ 
++    int is_mtk = 0;
++    int is_mtk_boot = 0;
+     char *kernel_fn = NULL;
+     void *kernel_data = NULL;
+     char *ramdisk_fn = NULL;
+@@ -182,6 +210,16 @@ int main(int argc, char **argv)
+                 }
+             } else if(!strcmp(arg, "--dt")) {
+                 dt_fn = val;
++            } else if (!strcmp(arg, "--mtk")) {
++                if (!strcmp(val, "boot")) {
++                    is_mtk = 1;
++                    is_mtk_boot = 1;
++                } else if (!strcmp(val, "recovery")) {
++                    is_mtk = 1;
++                    is_mtk_boot = 0;
++                } else {
++                    return usage();
++                }
+             } else {
+                 return usage();
+             }
+@@ -229,7 +267,7 @@ int main(int argc, char **argv)
+         strncpy((char *)hdr.extra_cmdline, cmdline, BOOT_EXTRA_ARGS_SIZE);
+     }
+ 
+-    kernel_data = load_file(kernel_fn, &hdr.kernel_size);
++    kernel_data = load_file(kernel_fn, &hdr.kernel_size, is_mtk, "KERNEL");
+     if(kernel_data == 0) {
+         fprintf(stderr,"error: could not load kernel '%s'\n", kernel_fn);
+         return 1;
+@@ -239,7 +277,7 @@ int main(int argc, char **argv)
+         ramdisk_data = 0;
+         hdr.ramdisk_size = 0;
+     } else {
+-        ramdisk_data = load_file(ramdisk_fn, &hdr.ramdisk_size);
++        ramdisk_data = load_file(ramdisk_fn, &hdr.ramdisk_size, is_mtk, is_mtk_boot ? "ROOTFS" : "RECOVERY");
+         if(ramdisk_data == 0) {
+             fprintf(stderr,"error: could not load ramdisk '%s'\n", ramdisk_fn);
+             return 1;
+@@ -247,7 +285,7 @@ int main(int argc, char **argv)
+     }
+ 
+     if(second_fn) {
+-        second_data = load_file(second_fn, &hdr.second_size);
++        second_data = load_file(second_fn, &hdr.second_size, is_mtk, "");
+         if(second_data == 0) {
+             fprintf(stderr,"error: could not load secondstage '%s'\n", second_fn);
+             return 1;
+@@ -255,7 +293,7 @@ int main(int argc, char **argv)
+     }
+ 
+     if(dt_fn) {
+-        dt_data = load_file(dt_fn, &hdr.dt_size);
++        dt_data = load_file(dt_fn, &hdr.dt_size, is_mtk, "");
+         if (dt_data == 0) {
+             fprintf(stderr,"error: could not load device tree image '%s'\n", dt_fn);
+             return 1;
+diff --git a/mkbootimg/unpackbootimg.c b/mkbootimg/unpackbootimg.c
+index 3d2fda7..d844cfd 100644
+--- a/mkbootimg/unpackbootimg.c
++++ b/mkbootimg/unpackbootimg.c
+@@ -38,11 +38,21 @@ void write_string_to_file(char* file, char* string)
+     fclose(f);
+ }
+ 
++void maybe_skip_mtk_header(FILE* f, int is_mtk)
++{
++    if (!is_mtk) {
++        return;
++    }
++
++    fseek(f, MTK_HEADER_SIZE, SEEK_CUR);
++}
++
+ int usage() {
+     printf("usage: unpackbootimg\n");
+     printf("\t-i|--input boot.img\n");
+     printf("\t[ -o|--output output_directory]\n");
+     printf("\t[ -p|--pagesize <size-in-hexadecimal> ]\n");
++    printf("\t[ --mtk 1 ]\n");
+     return 0;
+ }
+ 
+@@ -52,6 +62,7 @@ int main(int argc, char** argv)
+     char* directory = "./";
+     char* filename = NULL;
+     int pagesize = 0;
++    int is_mtk = 0;
+ 
+     argc--;
+     argv++;
+@@ -66,6 +77,12 @@ int main(int argc, char** argv)
+             directory = val;
+         } else if(!strcmp(arg, "--pagesize") || !strcmp(arg, "-p")) {
+             pagesize = strtoul(val, 0, 16);
++        } else if (!strcmp(arg, "--mtk")) {
++            if (!strcmp(val, "1")) {
++                is_mtk = 1;
++            }
++
++            return usage();
+         } else {
+             return usage();
+         }
+@@ -153,23 +170,27 @@ int main(int argc, char** argv)
+     //printf("total read: %d\n", total_read);
+     total_read += read_padding(f, sizeof(header), pagesize);
+ 
++    int mtk_size_adjust = is_mtk ? -MTK_HEADER_SIZE : 0;
++
+     sprintf(tmp, "%s/%s", directory, basename(filename));
+     strcat(tmp, "-zImage");
+     FILE *k = fopen(tmp, "wb");
+-    byte* kernel = (byte*)malloc(header.kernel_size);
++    byte* kernel = (byte*)malloc(header.kernel_size + mtk_size_adjust);
+     //printf("Reading kernel...\n");
+-    fread(kernel, header.kernel_size, 1, f);
++    maybe_skip_mtk_header(f, is_mtk);
++    fread(kernel, header.kernel_size + mtk_size_adjust, 1, f);
+     total_read += header.kernel_size;
+-    fwrite(kernel, header.kernel_size, 1, k);
++    fwrite(kernel, header.kernel_size + mtk_size_adjust, 1, k);
+     fclose(k);
+ 
+     //printf("total read: %d\n", header.kernel_size);
+     total_read += read_padding(f, header.kernel_size, pagesize);
+ 
+ 
+-    byte* ramdisk = (byte*)malloc(header.ramdisk_size);
++    byte* ramdisk = (byte*)malloc(header.ramdisk_size + mtk_size_adjust);
+     //printf("Reading ramdisk...\n");
+-    fread(ramdisk, header.ramdisk_size, 1, f);
++    maybe_skip_mtk_header(f, is_mtk);
++    fread(ramdisk, header.ramdisk_size + mtk_size_adjust, 1, f);
+     total_read += header.ramdisk_size;
+     sprintf(tmp, "%s/%s", directory, basename(filename));
+     if(ramdisk[0] == 0x02 && ramdisk[1]== 0x21)
+@@ -177,7 +198,7 @@ int main(int argc, char** argv)
+     else
+         strcat(tmp, "-ramdisk.gz");
+     FILE *r = fopen(tmp, "wb");
+-    fwrite(ramdisk, header.ramdisk_size, 1, r);
++    fwrite(ramdisk, header.ramdisk_size + mtk_size_adjust, 1, r);
+     fclose(r);
+ 
+     total_read += read_padding(f, header.ramdisk_size, pagesize);
+@@ -185,11 +206,12 @@ int main(int argc, char** argv)
+     sprintf(tmp, "%s/%s", directory, basename(filename));
+     strcat(tmp, "-second");
+     FILE *s = fopen(tmp, "wb");
+-    byte* second = (byte*)malloc(header.second_size);
++    byte* second = (byte*)malloc(header.second_size + mtk_size_adjust);
+     //printf("Reading second...\n");
+-    fread(second, header.second_size, 1, f);
++    maybe_skip_mtk_header(f, is_mtk);
++    fread(second, header.second_size + mtk_size_adjust, 1, f);
+     total_read += header.second_size;
+-    fwrite(second, header.second_size, 1, r);
++    fwrite(second, header.second_size + mtk_size_adjust, 1, r);
+     fclose(s);
+ 
+     total_read += read_padding(f, header.second_size, pagesize);
+@@ -197,11 +219,12 @@ int main(int argc, char** argv)
+     sprintf(tmp, "%s/%s", directory, basename(filename));
+     strcat(tmp, "-dt");
+     FILE *d = fopen(tmp, "wb");
+-    byte* dt = (byte*)malloc(header.dt_size);
++    byte* dt = (byte*)malloc(header.dt_size + mtk_size_adjust);
+     //printf("Reading dt...\n");
+-    fread(dt, header.dt_size, 1, f);
++    maybe_skip_mtk_header(f, is_mtk);
++    fread(dt, header.dt_size + mtk_size_adjust, 1, f);
+     total_read += header.dt_size;
+-    fwrite(dt, header.dt_size, 1, r);
++    fwrite(dt, header.dt_size + mtk_size_adjust, 1, r);
+     fclose(d);
+     
+     fclose(f);
+
+From 7c9e9af336885f1be0bc1b98455444bc129b9963 Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 23:33:38 +0800
+Subject: [PATCH 8/9] MediaTek: healthd: correctly report battery voltage on
+ MTK kernels.
+
+---
+ healthd/BatteryMonitor.cpp | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/healthd/BatteryMonitor.cpp b/healthd/BatteryMonitor.cpp
+index 67a8ad0..2ecb456 100644
+--- a/healthd/BatteryMonitor.cpp
++++ b/healthd/BatteryMonitor.cpp
+@@ -203,8 +203,11 @@ bool BatteryMonitor::update(void) {
+     props.batteryLevel = mBatteryFixedCapacity ?
+         mBatteryFixedCapacity :
+         getIntField(mHealthdConfig->batteryCapacityPath);
++#ifndef MTK_HARDWARE
+     props.batteryVoltage = getIntField(mHealthdConfig->batteryVoltagePath) / 1000;
+-
++#else
++    props.batteryVoltage = getIntField(mHealthdConfig->batteryVoltagePath);
++#endif
+     props.batteryTemperature = mBatteryFixedTemperature ?
+         mBatteryFixedTemperature :
+         getIntField(mHealthdConfig->batteryTemperaturePath);
+
+From c2fde1498f97be0ff5385cbcc346ccbcab78fced Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sat, 30 Apr 2016 10:58:19 +0800
+Subject: [PATCH 9/9] MediaTek: read MTK Serial Number.
+
+---
+ init/init.cpp | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
+
+diff --git a/init/init.cpp b/init/init.cpp
+index 3932cec..452d285 100644
+--- a/init/init.cpp
++++ b/init/init.cpp
+@@ -770,6 +770,44 @@ static int console_init_action(int nargs, char **args)
+     return 0;
+ }
+ 
++#ifdef MTK_HARDWARE
++static int read_serialno()
++{
++    char pval[PROP_VALUE_MAX];
++    int fd;
++    char serialno[32];
++    size_t s;
++
++    int ret = property_get("ro.boot.serialno", pval);
++    if (ret > 0) {
++        NOTICE("Already get serial number from cmdline\n");
++        return 1;
++    }
++
++    fd = open("/sys/sys_info/serial_number", O_RDWR);
++    if (fd < 0) {
++        NOTICE("fail to open: %s\n", "/sys/sys_info/serial_number");
++        return 0;
++    }
++    s = read(fd, serialno, sizeof(char)*32);
++
++    serialno[s-1] = '\0';
++
++    close(fd);
++
++    if (s <= 0) {
++	    NOTICE("could not read serial number sys file\n");
++	    return 0;
++	}
++
++    NOTICE( "serial number=%s\n",serialno);
++
++    property_set("ro.boot.serialno", serialno);
++
++    return 1;
++}
++#endif
++
+ static void import_kernel_nv(char *name, bool for_emulator)
+ {
+     char *value = strchr(name, '=');
+@@ -879,6 +917,10 @@ static void process_kernel_cmdline(void)
+     import_kernel_cmdline(false, import_kernel_nv);
+     if (qemu[0])
+         import_kernel_cmdline(true, import_kernel_nv);
++
++#ifdef MTK_HARDWARE
++    read_serialno();
++#endif
+ }
+ 
+ static int queue_property_triggers_action(int nargs, char **args)

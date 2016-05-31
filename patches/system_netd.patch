@@ -1,0 +1,195 @@
+From 9e3c12489fc1db448a17423a021f17244542eaf3 Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 18:34:11 +0800
+Subject: [PATCH 1/3] MediaTek: fix the softap of wifi.
+
+---
+ server/SoftapController.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/server/SoftapController.cpp b/server/SoftapController.cpp
+index b05118e..25bf459 100755
+--- a/server/SoftapController.cpp
++++ b/server/SoftapController.cpp
+@@ -54,7 +54,7 @@ using android::base::WriteStringToFile;
+ #endif
+ 
+ #ifdef LIBWPA_CLIENT_EXISTS
+-static const char HOSTAPD_UNIX_FILE[]    = "/data/misc/wifi/hostapd/wlan0";
++static const char HOSTAPD_UNIX_FILE[]    = "/data/misc/wifi/hostapd/ap0";
+ static const char HOSTAPD_SOCKETS_DIR[]    = "/data/misc/wifi/sockets";
+ static const char HOSTAPD_DHCP_DIR[]    = "/data/misc/dhcp";
+ #endif
+@@ -277,7 +277,7 @@ int SoftapController::setSoftap(int argc, char *argv[]) {
+             "hw_mode=%c\n"
+             "ignore_broadcast_ssid=%d\n"
+             "wowlan_triggers=any\n",
+-            argv[2], argv[3], channel, (channel <= 14) ? 'g' : 'a', hidden));
++            "ap0", argv[3], channel, (channel <= 14) ? 'g' : 'a', hidden));
+ 
+     std::string fbuf;
+     if (argc > 7) {
+
+From 2f444659a4e1227660c119badc5c6d12ac5696bb Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Sun, 17 Apr 2016 18:36:40 +0800
+Subject: [PATCH 2/3] MediaTek: fix wifi data connection by @fire855.
+
+---
+ server/RouteController.cpp | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/server/RouteController.cpp b/server/RouteController.cpp
+index 889779d..71e78e2 100644
+--- a/server/RouteController.cpp
++++ b/server/RouteController.cpp
+@@ -45,7 +45,7 @@ namespace {
+ // BEGIN CONSTANTS --------------------------------------------------------------------------------
+ 
+ const uint32_t RULE_PRIORITY_VPN_OVERRIDE_SYSTEM = 10000;
+-const uint32_t RULE_PRIORITY_VPN_OVERRIDE_OIF    = 10500;
++//const uint32_t RULE_PRIORITY_VPN_OVERRIDE_OIF    = 10500;
+ const uint32_t RULE_PRIORITY_VPN_OUTPUT_TO_LOCAL = 11000;
+ const uint32_t RULE_PRIORITY_SECURE_VPN          = 12000;
+ const uint32_t RULE_PRIORITY_EXPLICIT_NETWORK    = 13000;
+@@ -556,6 +556,7 @@ WARN_UNUSED_RESULT int modifyOutputInterfaceRules(const char* interface, uint32_
+     fwmark.permission = permission;
+     mask.permission = permission;
+ 
++/*
+     // If this rule does not specify a UID range, then also add a corresponding high-priority rule
+     // for UID. This covers forwarded packets and system daemons such as the tethering DHCP server.
+     if (uidStart == INVALID_UID && uidEnd == INVALID_UID) {
+@@ -565,6 +566,7 @@ WARN_UNUSED_RESULT int modifyOutputInterfaceRules(const char* interface, uint32_
+             return ret;
+         }
+     }
++*/
+ 
+     return modifyIpRule(add ? RTM_NEWRULE : RTM_DELRULE, RULE_PRIORITY_OUTPUT_INTERFACE, table,
+                         fwmark.intValue, mask.intValue, IIF_NONE, interface, uidStart, uidEnd);
+
+From 05dbbd4691fa01cd318d5cce30b9b346edb81232 Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Wed, 20 Apr 2016 07:50:15 +0800
+Subject: [PATCH 3/3] MediaTek: improve mtk wifi tethering by @fire855.
+
+---
+ server/SoftapController.cpp | 64 +++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 62 insertions(+), 2 deletions(-)
+
+diff --git a/server/SoftapController.cpp b/server/SoftapController.cpp
+index 25bf459..08e4942 100755
+--- a/server/SoftapController.cpp
++++ b/server/SoftapController.cpp
+@@ -42,6 +42,7 @@
+ #include "wifi.h"
+ #include "wifi_fst.h"
+ #include "ResponseCode.h"
++#include "cutils/properties.h"
+ 
+ #include "SoftapController.h"
+ 
+@@ -54,7 +55,7 @@ using android::base::WriteStringToFile;
+ #endif
+ 
+ #ifdef LIBWPA_CLIENT_EXISTS
+-static const char HOSTAPD_UNIX_FILE[]    = "/data/misc/wifi/hostapd/ap0";
++static const char HOSTAPD_UNIX_FILE[]    = "/data/misc/wifi/hostapd/wlan0";
+ static const char HOSTAPD_SOCKETS_DIR[]    = "/data/misc/wifi/sockets";
+ static const char HOSTAPD_DHCP_DIR[]    = "/data/misc/dhcp";
+ #endif
+@@ -240,6 +241,8 @@ bool SoftapController::isSoftapStarted() {
+     return (mPid != 0);
+ }
+ 
++#define USE_MTK_WLAN   1
++
+ /*
+  * Arguments:
+  *  argv[2] - wlan interface
+@@ -253,6 +256,12 @@ int SoftapController::setSoftap(int argc, char *argv[]) {
+     int hidden = 0;
+     int channel = AP_CHANNEL_DEFAULT;
+ 
++#ifdef USE_MTK_WLAN
++    char ap_channel[PROPERTY_VALUE_MAX] = {'\0'};
++    const char AP_CHANNEL_PROP_NAME[]="wifi.tethering.channel";
++    char mode;
++#endif
++
+     if (argc < 5) {
+         ALOGE("Softap set is missing arguments. Please use:");
+         ALOGE("softap <wlan iface> <SSID> <hidden/broadcast> <channel> <wpa2?-psk|open> <passphrase>");
+@@ -263,11 +272,31 @@ int SoftapController::setSoftap(int argc, char *argv[]) {
+         hidden = 1;
+ 
+     if (argc >= 5) {
++    #ifndef USE_MTK_WLAN
+         channel = atoi(argv[5]);
+         if (channel <= 0)
+             channel = AP_CHANNEL_DEFAULT;
++    #else
++        if (property_get(AP_CHANNEL_PROP_NAME, ap_channel, NULL)){
++            channel = atoi(ap_channel);
++        } else {
++            channel = atoi(argv[5]);
++        }
++
++        if (channel < 0) {
++            channel = AP_CHANNEL_DEFAULT;
++            mode = 'g';
++        } else if (channel >= 0 && channel <= 14) {
++            /* 2.4G channel, 0 will trigger MTK auto channel selection */
++            mode = 'g';
++        } else {
++            /* 5G channel */
++            mode = 'a';
++        }
++    #endif
+     }
+ 
++#ifndef USE_MTK_WLAN
+     std::string wbuf(StringPrintf("interface=%s\n"
+             "driver=nl80211\n"
+             "ctrl_interface=/data/misc/wifi/hostapd\n"
+@@ -277,7 +306,38 @@ int SoftapController::setSoftap(int argc, char *argv[]) {
+             "hw_mode=%c\n"
+             "ignore_broadcast_ssid=%d\n"
+             "wowlan_triggers=any\n",
+-            "ap0", argv[3], channel, (channel <= 14) ? 'g' : 'a', hidden));
++            argv[2], argv[3], channel, (channel <= 14) ? 'g' : 'a', hidden));
++#else
++/*
++ * Arguments:
++ *  argv[2] - wlan interface
++ *  argv[3] - SSID
++ *  argv[4] - Broadcast/Hidden
++ *  argv[5] - Channel
++ *  argv[6] - Security
++ *  argv[7] - Key
++ *  argv[8] - Channel width
++ *  argv[9] - Max connection
++ */
++    std::string wbuf;
++    if (argc > 9) {
++        wbuf = StringPrintf("interface=%s\ndriver=nl80211\nctrl_interface="
++            "/data/misc/wifi/hostapd\nssid=%s\nchannel=%d\nieee80211n=1\n"
++            "hw_mode=%c\nignore_broadcast_ssid=%d\nmax_num_sta=%d\n"
++            "eap_server=1\nwps_state=2\nconfig_methods=display physical_display push_button\n"
++            "device_name=AndroidAP\nmanufacturer=MediaTek Inc.\nmodel_name=MTK Wireless Model\n"
++            "model_number=66xx\nserial_number=1.0\ndevice_type=10-0050F204-5\nwowlan_triggers=disconnect\n",
++            "ap0", argv[3], channel, mode, hidden, atoi(argv[9]));
++    } else {
++        wbuf = StringPrintf("interface=%s\ndriver=nl80211\nctrl_interface="
++            "/data/misc/wifi/hostapd\nssid=%s\nchannel=%d\nieee80211n=1\n"
++            "hw_mode=%c\nignore_broadcast_ssid=%d\n"
++            "eap_server=1\nwps_state=2\nconfig_methods=display physical_display push_button\n"
++            "device_name=AndroidAP\nmanufacturer=MediaTek Inc.\nmodel_name=MTK Wireless Model\n"
++            "model_number=66xx\nserial_number=1.0\ndevice_type=10-0050F204-5\nwowlan_triggers=disconnect\n",
++            "ap0", argv[3], channel, mode, hidden);
++    }
++#endif
+ 
+     std::string fbuf;
+     if (argc > 7) {

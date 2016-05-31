@@ -1,0 +1,218 @@
+From aa9e38a0bcbcc00e4a68b1ed5e181a547c5cfdfb Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Tue, 19 Apr 2016 13:15:35 +0800
+Subject: [PATCH 1/2] Implement fakeiccid for legacy rils (1/2).
+
+---
+ .../android/internal/telephony/SubscriptionInfoUpdater.java    |  3 ++-
+ src/java/com/android/internal/telephony/uicc/IccConstants.java |  3 +++
+ .../com/android/internal/telephony/uicc/IccFileHandler.java    |  5 +++++
+ src/java/com/android/internal/telephony/uicc/RuimRecords.java  | 10 +++++++---
+ src/java/com/android/internal/telephony/uicc/SIMRecords.java   | 10 +++++++---
+ 5 files changed, 24 insertions(+), 7 deletions(-)
+
+diff --git a/src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java b/src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java
+index 01ee3a7..8d6181a 100644
+--- a/src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java
++++ b/src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java
+@@ -105,6 +105,7 @@
+     private static Phone[] mPhone;
+     private CommandsInterface[] mCommandsInterfaces;
+     private static Context mContext = null;
++    private static IccFileHandler[] mFh = new IccFileHandler[PROJECT_SIM_NUM];
+     protected static String mIccId[] = new String[PROJECT_SIM_NUM];
+     private static int[] mInsertSimState = new int[PROJECT_SIM_NUM];
+     private SubscriptionManager mSubscriptionManager = null;
+@@ -290,7 +291,7 @@ public void handleMessage(Message msg) {
+                         mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
+                     }
+                 } else {
+-                    mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
++                    mIccId[slotId] = mFh[slotId].needsFakeIccid() ? IccConstants.FAKE_ICCID : ICCID_STRING_FOR_NO_SIM;
+                     logd("Query IccId fail: " + ar.exception);
+                 }
+                 logd("sIccId[" + slotId + "] = " + mIccId[slotId]);
+diff --git a/src/java/com/android/internal/telephony/uicc/IccConstants.java b/src/java/com/android/internal/telephony/uicc/IccConstants.java
+index 90e6b46..46bc05a 100644
+--- a/src/java/com/android/internal/telephony/uicc/IccConstants.java
++++ b/src/java/com/android/internal/telephony/uicc/IccConstants.java
+@@ -102,4 +102,7 @@
+ 
+     //UICC access
+     static final String DF_ADF = "7FFF";
++
++    //CM-Specific : Fake ICCID
++    static final String FAKE_ICCID = "00000000000001";
+ }
+diff --git a/src/java/com/android/internal/telephony/uicc/IccFileHandler.java b/src/java/com/android/internal/telephony/uicc/IccFileHandler.java
+index a84eb46..e2d2fd9 100644
+--- a/src/java/com/android/internal/telephony/uicc/IccFileHandler.java
++++ b/src/java/com/android/internal/telephony/uicc/IccFileHandler.java
+@@ -745,6 +745,11 @@ public void useLocalPb (boolean useLocalPb) {
+         logd("Using " + (useLocalPb ? "Local": "Global") + " Phonebook");
+         mUseLocalPb = useLocalPb;
+     }
++ 
++    public boolean needsFakeIccid() {
++        return mCi.needsOldRilFeature("fakeiccid");
++    }
++
+     protected abstract String getEFPath(int efid);
+     protected abstract void logd(String s);
+ 
+diff --git a/src/java/com/android/internal/telephony/uicc/RuimRecords.java b/src/java/com/android/internal/telephony/uicc/RuimRecords.java
+index d348c81..9ef294b 100644
+--- a/src/java/com/android/internal/telephony/uicc/RuimRecords.java
++++ b/src/java/com/android/internal/telephony/uicc/RuimRecords.java
+@@ -690,11 +690,15 @@ public void handleMessage(Message msg) {
+                 data = (byte[])ar.result;
+ 
+                 if (ar.exception != null) {
+-                    break;
++                    if(mFh.needsFakeIccid()) {
++                        mIccId = FAKE_ICCID;
++                    } else {
++                        break;
++                    }
++                } else {
++                    mIccId = IccUtils.bcdToString(data, 0, data.length);
+                 }
+ 
+-                mIccId = IccUtils.bcdToString(data, 0, data.length);
+-
+                 log("iccid: " + mIccId);
+ 
+             break;
+diff --git a/src/java/com/android/internal/telephony/uicc/SIMRecords.java b/src/java/com/android/internal/telephony/uicc/SIMRecords.java
+index 1ac262b..c9ec803 100644
+--- a/src/java/com/android/internal/telephony/uicc/SIMRecords.java
++++ b/src/java/com/android/internal/telephony/uicc/SIMRecords.java
+@@ -874,11 +874,15 @@ public void handleMessage(Message msg) {
+                 data = (byte[])ar.result;
+ 
+                 if (ar.exception != null) {
+-                    break;
++                    if(mFh.needsFakeIccid()) {
++                        mIccId = FAKE_ICCID;
++                    } else {
++                        break;
++                    }
++                } else {
++                    mIccId = IccUtils.bcdToString(data, 0, data.length);
+                 }
+ 
+-                mIccId = IccUtils.bcdToString(data, 0, data.length);
+-
+                 log("iccid: " + mIccId);
+ 
+             break;
+
+From 0746b54c79bc85e056137fb0ed067c2fa6bf06e1 Mon Sep 17 00:00:00 2001
+From: ferhung-mtk <ferhung27@gmail.com>
+Date: Wed, 20 Apr 2016 07:28:50 +0800
+Subject: [PATCH 2/2] Improving fakeiccid for legacy rils & add the fixing of
+ ussd by @fire855
+
+---
+ .../com/android/internal/telephony/SubscriptionInfoUpdater.java  | 3 +--
+ src/java/com/android/internal/telephony/gsm/GSMPhone.java        | 7 ++++++-
+ src/java/com/android/internal/telephony/uicc/IccFileHandler.java | 5 -----
+ src/java/com/android/internal/telephony/uicc/RuimRecords.java    | 9 +++------
+ src/java/com/android/internal/telephony/uicc/SIMRecords.java     | 9 +++------
+ 5 files changed, 13 insertions(+), 20 deletions(-)
+
+diff --git a/src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java b/src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java
+index 8d6181a..fc22d6a 100644
+--- a/src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java
++++ b/src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java
+@@ -105,7 +105,6 @@
+     private static Phone[] mPhone;
+     private CommandsInterface[] mCommandsInterfaces;
+     private static Context mContext = null;
+-    private static IccFileHandler[] mFh = new IccFileHandler[PROJECT_SIM_NUM];
+     protected static String mIccId[] = new String[PROJECT_SIM_NUM];
+     private static int[] mInsertSimState = new int[PROJECT_SIM_NUM];
+     private SubscriptionManager mSubscriptionManager = null;
+@@ -291,7 +290,7 @@ public void handleMessage(Message msg) {
+                         mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
+                     }
+                 } else {
+-                    mIccId[slotId] = mFh[slotId].needsFakeIccid() ? IccConstants.FAKE_ICCID : ICCID_STRING_FOR_NO_SIM;
++                    mIccId[slotId] = IccConstants.FAKE_ICCID;
+                     logd("Query IccId fail: " + ar.exception);
+                 }
+                 logd("sIccId[" + slotId + "] = " + mIccId[slotId]);
+diff --git a/src/java/com/android/internal/telephony/gsm/GSMPhone.java b/src/java/com/android/internal/telephony/gsm/GSMPhone.java
+index 82ae9f4..0ba62bb 100644
+--- a/src/java/com/android/internal/telephony/gsm/GSMPhone.java
++++ b/src/java/com/android/internal/telephony/gsm/GSMPhone.java
+@@ -1475,7 +1475,12 @@ private void updateCallForwardStatus() {
+             // Complete pending USSD
+ 
+             if (isUssdRelease) {
+-                found.onUssdRelease();
++                // MTK weirdness
++                if(ussdMessage != null) {
++                    found.onUssdFinished(ussdMessage, isUssdRequest);
++                } else {
++                    found.onUssdRelease();
++                }
+             } else if (isUssdError) {
+                 found.onUssdFinishedError();
+             } else {
+diff --git a/src/java/com/android/internal/telephony/uicc/IccFileHandler.java b/src/java/com/android/internal/telephony/uicc/IccFileHandler.java
+index e2d2fd9..a84eb46 100644
+--- a/src/java/com/android/internal/telephony/uicc/IccFileHandler.java
++++ b/src/java/com/android/internal/telephony/uicc/IccFileHandler.java
+@@ -745,11 +745,6 @@ public void useLocalPb (boolean useLocalPb) {
+         logd("Using " + (useLocalPb ? "Local": "Global") + " Phonebook");
+         mUseLocalPb = useLocalPb;
+     }
+- 
+-    public boolean needsFakeIccid() {
+-        return mCi.needsOldRilFeature("fakeiccid");
+-    }
+-
+     protected abstract String getEFPath(int efid);
+     protected abstract void logd(String s);
+ 
+diff --git a/src/java/com/android/internal/telephony/uicc/RuimRecords.java b/src/java/com/android/internal/telephony/uicc/RuimRecords.java
+index 9ef294b..8e5f4ab 100644
+--- a/src/java/com/android/internal/telephony/uicc/RuimRecords.java
++++ b/src/java/com/android/internal/telephony/uicc/RuimRecords.java
+@@ -690,12 +690,9 @@ public void handleMessage(Message msg) {
+                 data = (byte[])ar.result;
+ 
+                 if (ar.exception != null) {
+-                    if(mFh.needsFakeIccid()) {
+-                        mIccId = FAKE_ICCID;
+-                    } else {
+-                        break;
+-                    }
+-                } else {
++                    mIccId = FAKE_ICCID;
++                }
++                else {
+                     mIccId = IccUtils.bcdToString(data, 0, data.length);
+                 }
+ 
+diff --git a/src/java/com/android/internal/telephony/uicc/SIMRecords.java b/src/java/com/android/internal/telephony/uicc/SIMRecords.java
+index c9ec803..e8583a3 100644
+--- a/src/java/com/android/internal/telephony/uicc/SIMRecords.java
++++ b/src/java/com/android/internal/telephony/uicc/SIMRecords.java
+@@ -874,12 +874,9 @@ public void handleMessage(Message msg) {
+                 data = (byte[])ar.result;
+ 
+                 if (ar.exception != null) {
+-                    if(mFh.needsFakeIccid()) {
+-                        mIccId = FAKE_ICCID;
+-                    } else {
+-                        break;
+-                    }
+-                } else {
++                    mIccId = FAKE_ICCID;
++                }
++                else {
+                     mIccId = IccUtils.bcdToString(data, 0, data.length);
+                 }
+ 
