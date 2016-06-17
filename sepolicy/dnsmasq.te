@@ -1,6 +1,0 @@
-# ==============================================
-# MTK Policy Rule
-# ============
-
-
-allow dnsmasq netd:file read;

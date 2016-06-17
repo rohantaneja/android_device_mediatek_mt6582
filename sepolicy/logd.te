@@ -1,4 +1,1 @@
-# ==============================================
-# MTK Policy Rule
-# ============
-dontaudit logd unlabeled:dir search;
+allow logd devpts:chr_file getattr;
