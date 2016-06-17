@@ -1,0 +1,24 @@
+YGPS.apk is the pre-built system application, contain test tool for engineer
+to do GPS test.
+
+This apk is pre-built by MediaTek internal.
+
+WHAT IT DOES?
+=============
+YGPS.apk display satellites information, like coordinate, signal strength, fix status.
+It can do hot/warm/cold/full restart gps and show NMEA log view, some debug switch button.
+
+HOW IT WAS BUILT?
+==================
+It needs the following library from AOSP:
+No
+
+and the following libs from MediaTek:
+No
+
+HOW TO USE IT?
+==============
+
+Enter dialer, and key in *#*#3646633#*#* to launch the EngineerMode.
+Then enter Location tab, there will show YGPS item.
+all source code are at (vendor/mediatek/proprietary/packages/apps/YGPS/)
