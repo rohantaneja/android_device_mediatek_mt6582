@@ -154,7 +154,7 @@ TARGET_CPU_MEMCPY_OPT_DISABLE := true
 USE_MINIKIN := true
 
 # Selinux
-BOARD_SEPOLICY_DIRS += $(LOCAL_PATH)/sepolicy
+BOARD_SEPOLICY_DIRS += device/mediatek/mt6582/sepolicy
 
 # Sepolicy hack for old kernel, mt6582 version is 26.
 POLICYVERS := 26
@@ -170,4 +170,3 @@ FM_LIB_BUILD_MT6620 := yes
 FM_LIB_BUILD_MT6627 := yes
 FM_LIB_BUILD_MT6628 := yes
 FM_LIB_BUILD_MT6630 := yes
-
