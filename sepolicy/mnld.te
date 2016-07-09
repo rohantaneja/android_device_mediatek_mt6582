@@ -1,0 +1,24 @@
+type mnld, domain;
+type mnld_exec, exec_type, file_type;
+
+init_daemon_domain(mnld)
+allow mnld mnld_exec:file { read open getattr execute execute_no_trans};
+allow mnld mnld_data_file:dir { create add_name remove_name search write };
+allow mnld mnld_data_file:sock_file { rw_file_perms setattr create unlink };
+allow mnld agpsd_data_file:dir { rw_dir_perms };
+allow mnld sysfs:file { open read write };
+allow mnld gps_data_file:dir rw_dir_perms;
+allow mnld agpsd_data_file:sock_file { setattr create rw_file_perms unlink };
+allow mnld nvram_data_file:dir { create rw_dir_perms };
+allow mnld mtk_agpsd:unix_dgram_socket sendto;
+allow mnld nvram_data_file:file { create rw_file_perms };
+allow mnld mnld_device:chr_file { rw_file_perms };
+allow mnld property_socket:sock_file write;
+allow mnld init:unix_stream_socket connectto;
+allow mnld gps_device:chr_file { rw_file_perms };
+allow mnld system_server:unix_dgram_socket sendto;
+allow mnld gps_prop:property_service set;
+allow mnld gps_data_file:file { rw_file_perms create unlink setattr };
+allow mnld self:tcp_socket { accept listen bind create setopt };
+allow mnld port:tcp_socket name_bind;
+allow mnld node:tcp_socket node_bind;

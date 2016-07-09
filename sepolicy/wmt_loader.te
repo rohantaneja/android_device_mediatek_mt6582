@@ -1,0 +1,11 @@
+type wmt_loader, domain;
+type wmt_loader_exec, exec_type, file_type;
+
+init_daemon_domain(wmt_loader)
+allow wmt_loader wmt_loader_exec:file { read open getattr execute execute_no_trans};
+allow wmt_loader self:capability { chown dac_override };
+allow wmt_loader wmtdetect_device:chr_file { open read write ioctl };
+allow wmt_loader proc:file setattr;
+allow wmt_loader property_socket:sock_file rw_file_perms;
+allow wmt_loader init:unix_stream_socket connectto;
+allow wmt_loader wcn_combo_chip_prop:property_service set;

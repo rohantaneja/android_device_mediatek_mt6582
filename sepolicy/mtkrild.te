@@ -1,0 +1,20 @@
+type mtkrild, domain;
+type mtkrild_exec, exec_type, file_type;
+
+init_daemon_domain(mtkrild)
+allow mtkrild mtkrild_exec:file { read open getattr execute execute_no_trans};
+allow mtkrild Vcodec_device:chr_file { read write open };
+allow mtkrild ril_prop:property_service set;
+allow mtkrild devmap_device:chr_file { read ioctl open };
+allow mtkrild devpts:chr_file { read write ioctl open };
+allow mtkrild init:unix_stream_socket connectto;
+allow mtkrild property_socket:sock_file write;
+allow mtkrild self:capability { setuid dac_override net_admin };
+allow mtkrild radio_device:dir { create add_name remove_name search write rw_dir_perms };
+allow mtkrild radio_prop:property_service set;
+allow radio mtkrild:unix_stream_socket connectto;
+allow mtkrild ccci_device:chr_file { rw_file_perms };
+allow mtkrild sysfs_wake_lock:file { rw_file_perms };
+allow mtkrild self:udp_socket { connect create bind ioctl };
+allow mtkrild shell_exec:file { read open execute execute_no_trans };
+allow mtkrild proc:file write;

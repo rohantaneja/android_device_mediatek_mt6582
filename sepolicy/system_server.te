@@ -1,0 +1,12 @@
+allow system_server init:unix_dgram_socket sendto;
+allow system_server gps_data_file:file { read lock getattr open write create unlink setattr };
+allow system_server gps_data_file:dir { search write remove_name add_name };
+allow system_server init:unix_dgram_socket write;
+allow system_server init_tmpfs:file read;
+allow system_server mnld_data_file:dir { write remove_name add_name search};
+allow system_server mnld_data_file:sock_file { write create unlink setattr };
+allow system_server zygote:binder call;
+allow system_server mnld:unix_dgram_socket sendto;
+
+# 2016-6-10 added by ferhung
+allow system_server mnld_socket:sock_file write;

@@ -1,0 +1,4 @@
+allow bluetooth nvram_data_file:dir search;
+allow bluetooth nvram_data_file:file { read getattr open };
+allow bluetooth init:unix_dgram_socket write;
+allow bluetooth init_tmpfs:file read;

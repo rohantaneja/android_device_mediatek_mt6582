@@ -1,36 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <device name="Android">
     <item name="none">0</item>
-    <!-- screen values are most likely very wrong:
-	 copied from Fairphone1 -->
-    <item name="screen.on">206.1</item>
-    <item name="screen.full">237.4</item>
-    <item name="bluetooth.active">26.2</item>
-    <item name="bluetooth.on">4.3</item>
-    <item name="wifi.on">4.1</item>
-    <item name="wifi.active">90.8</item>
-    <item name="wifi.scan">9.5</item>
-    <item name="dsp.audio">70.75</item>
-    <item name="dsp.video">351</item>
-    <item name="radio.active">31.7</item>
-    <item name="radio.scanning">189.6</item>
-    <item name="gps.on">0.2</item>
+    <item name="screen.on">71</item>
+    <item name="screen.full">380</item>
+    <item name="bluetooth.active">17</item>
+    <item name="bluetooth.on">0.3</item>
+    <item name="wifi.on">0.3</item>
+    <item name="wifi.active">96</item>
+    <item name="wifi.scan">70</item>
+    <item name="dsp.audio">44</item>
+    <item name="dsp.video">280</item>
+    <item name="radio.active">250</item>
+    <item name="radio.scanning">82</item>
+    <item name="gps.on">1</item>
     <array name="radio.on">
-        <value>11.9</value>
-        <value>11.9</value>
+        <value>3.4</value>
+        <value>3.4</value>
     </array>
     <array name="cpu.speeds">
-        <value>1209000</value>
-        <value>988000</value>
-        <value>754000</value>
-        <value>497250</value>
+        <value>1300000</value>
+        <value>1196000</value>
+        <value>1040000</value>
+        <value>747500</value>
+        <value>598000</value>
     </array>
-    <item name="cpu.idle">7.9</item>
+    <item name="cpu.idle">2.1</item>
     <array name="cpu.active">
-        <value>0.1</value>
-        <value>0.1</value>
-        <value>0.1</value>
-        <value>0.1</value>
+        <value>398</value>
+        <value>286</value>
+        <value>217</value>
+        <value>185</value>
+        <value>119</value>
     </array>
-    <item name="battery.capacity">3200</item>
+    <item name="battery.capacity">2000</item>
+    <array name="wifi.batchedscan">
+        <value>.0002</value>
+        <value>.002</value>
+        <value>.02</value>
+        <value>.2</value>
+        <value>2</value>
+    </array>
 </device>

@@ -1,0 +1,19 @@
+type nvram_daemon, domain;
+type nvram_daemon_exec, exec_type, file_type;
+
+init_daemon_domain(nvram_daemon)
+allow nvram_daemon nvram_daemon_exec:file { read open getattr execute execute_no_trans};
+allow nvram_daemon nvram_data_file:dir { create add_name read write getattr setattr search };
+allow nvram_daemon nvram_data_file:file { create open read write getattr setattr };
+allow nvram_daemon nvram_device:blk_file { open read write getattr };
+allow nvram_daemon property_socket:sock_file write;
+allow nvram_daemon init:unix_stream_socket connectto;
+allow nvram_daemon gsensor_device:chr_file { open read write ioctl };
+allow nvram_daemon gyroscope_device:chr_file { open read write ioctl };
+allow nvram_daemon mtk_adc_cali_device:chr_file { open read write ioctl };
+allow nvram_daemon nvram_data_file:file open;
+allow nvram_daemon system_prop:property_service set;
+allow nvram_daemon touchpanel_data_file:dir { add_name read write getattr search };
+allow nvram_daemon touchpanel_data_file:file { create read open write getattr setattr };
+allow nvram_daemon sysfs:file { open read write };
+allow nvram_daemon self:capability { fsetid dac_read_search chown dac_override };

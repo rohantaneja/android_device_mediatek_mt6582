@@ -1,0 +1,9 @@
+af.modem_1.                           u:object_r:modem_prop:s0
+persist.af.modem.                     u:object_r:modem_prop:s0
+debug.hwc.                            u:object_r:hwc_prop:s0
+debug.st.                             u:object_r:hwc_prop:s0
+ccci.decrypt.state                    u:object_r:ccci_decrypt_state_prop:s0
+persist.mtk.wcn.combo.chipid          u:object_r:wcn_combo_chip_prop:s0
+persist.ril.cfu.querytype             u:object_r:ril_prop:s0
+gps.clock.type                        u:object_r:gps_prop:s0
+gps.gps.version                       u:object_r:gps_prop:s0

@@ -1,0 +1,23 @@
+YGPSTests.apk is the test APK of YGPS.apk.
+
+This application is pre-built by MediaTek internal.
+
+WHAT IT DOES?
+=============
+It is used to test basic functions of YGPS.
+
+HOW IT WAS BUILT?
+==================
+It needs the following library from AOSP:
+1. android.test.runner
+
+and the following libs from MediaTek:
+1. librobotium4
+
+All source/dependency modules of this module are already put in
+'vendor/mediatek/libs' folder.
+
+HOW TO USE IT?
+==============
+1. Install YGPSTests.apk in mediatek platform.
+2. Use adb command to run test.

@@ -1,0 +1,2 @@
+allow oemfs tmpfs:filesystem associate;
+allow oemfs rootfs:filesystem associate;

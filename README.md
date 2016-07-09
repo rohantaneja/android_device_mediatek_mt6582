@@ -1,24 +1,26 @@
-Generic MediaTek MT6582 device.
-==============
+----Thanks for xen0n, ferhung, fire855 who are contributing to the working CyanogenMod of MTK hardware.---
 
-Basic   | Spec Sheet
--------:|:-------------------------
-CPU     | 1.3GHz Quad-Core MT6582
-GPU     | Mali-400MP
-Memory  | 1GB RAM
-Shipped Android Version | 4.2.2 - 4.4.2
-Storage | 8GB (varies)
-Display | 6.0" 1280 x 720 px (varies)
-Camera  | 8MPx, LED Flash
+This is a device tree for Lenovo S650 ROW which is based on MT6582 SoC. Powered by Hikari no Tenshi.
+# Build
 
-This branch is for building 5.1.1 based ROMs.
+* init
+  Sync CyanogenMod source:
 
-* Compilation
+        # repo init -u git://github.com/ResurrectionRemix-mtk/platform_manifest.git -b marshmallow        
+        # repo sync -f --force-sync --no-clone-bundle
 
-        # repo init -u git://github.com/rohantaneja/android.git -b cm-12.1
-        
-        # repo sync
+* full build
         
         # source build/envsetup.sh
-        
-        # brunch cm_mt6582-userdebug
+
+        # brunch rr_S650_ROW-userdebug
+
+# Limitations
+
+Services requires root:
+
+`system/core/rootdir/init.rc`
+
+  * surfaceflinger depends on sched_setscheduler calls, unable to change process priority from 'system' user (default user 'system')
+
+  * mediaserver depends on /data/nvram folder access, unable to do voice calls from 'media' user (default user 'media')

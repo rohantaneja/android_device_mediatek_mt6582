@@ -1,0 +1,8 @@
+allow untrusted_app init:unix_dgram_socket write;
+allow untrusted_app init_tmpfs:file read;
+allow untrusted_app zygote_exec:lnk_file read;
+allow untrusted_app storage_stub_file:dir getattr;
+allow untrusted_app mnt_media_rw_file:dir getattr;
+
+# 2016-6-10 added by ferhung
+allow untrusted_app battery_service:service_manager find;

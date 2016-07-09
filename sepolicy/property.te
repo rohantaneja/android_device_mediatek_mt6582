@@ -1,0 +1,6 @@
+type modem_prop, property_type;
+type hwc_prop, property_type;
+type ccci_decrypt_state_prop, property_type;
+type wcn_combo_chip_prop, property_type;
+type ril_prop, property_type;
+type gps_prop, property_type;

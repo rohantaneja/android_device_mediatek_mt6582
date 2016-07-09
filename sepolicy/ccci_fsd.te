@@ -1,0 +1,17 @@
+type ccci_fsd, domain;
+type ccci_fsd_exec, exec_type, file_type;
+
+init_daemon_domain(ccci_fsd)
+allow ccci_fsd ccci_fsd_exec:file { read open getattr execute execute_no_trans};
+allow ccci_fsd ccci_device:chr_file { rw_file_perms };
+allow ccci_fsd nvram_data_file:dir { create rw_dir_perms };
+allow ccci_fsd property_socket:sock_file rw_file_perms;
+allow ccci_fsd sysfs_wake_lock:file { rw_file_perms };
+allow ccci_fsd init:unix_stream_socket connectto;
+allow ccci_fsd ccci_decrypt_state_prop:property_service set;
+allow ccci_fsd sysfs_wake_lock:file { rw_file_perms };
+allow ccci_fsd nvram_data_file:file { unlink create rw_file_perms };
+allow ccci_fsd protect_f_data_file:dir { rw_dir_perms };
+allow ccci_fsd protect_s_data_file:dir { rw_dir_perms };
+allow ccci_fsd protect_f_data_file:file { rw_file_perms };
+allow ccci_fsd protect_s_data_file:file { rw_file_perms };

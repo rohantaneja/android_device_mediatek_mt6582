@@ -1,0 +1,14 @@
+type bmc156d, domain;
+type bmc156d_exec, exec_type, file_type;
+
+init_daemon_domain(bmc156d)
+allow bmc156d bmc156d_exec:file { read open getattr execute execute_no_trans};
+allow bmc156d msensor_device:chr_file { rw_file_perms };
+allow bmc156d sysfs_sensor_file:dir { rw_dir_perms };
+allow bmc156d system_data_file:dir { rw_dir_perms };
+
+allow bmc156d msensor_device:chr_file rw_file_perms;
+allow bmc156d sysfs_sensor_file:file { rw_file_perms };
+allow bmc156d system_data_file:dir { setattr rw_dir_perms };
+allow bmc156d sensord_data_file:file { create setattr rw_file_perms};
+dontaudit bmc156d system_data_file:file create;

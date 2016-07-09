@@ -1,0 +1,2 @@
+allow radio init:unix_dgram_socket write;
+allow radio init_tmpfs:file read;

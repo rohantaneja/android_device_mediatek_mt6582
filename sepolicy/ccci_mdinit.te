@@ -1,0 +1,13 @@
+type ccci_mdinit, domain;
+type ccci_mdinit_exec, exec_type, file_type;
+
+init_daemon_domain(ccci_mdinit)
+allow ccci_mdinit ccci_mdinit_exec:file { read open getattr execute execute_no_trans};
+allow ccci_mdinit ccci_monitor_device:chr_file { rw_file_perms };
+allow ccci_mdinit nvram_data_file:dir { create setattr rw_dir_perms };
+allow ccci_mdinit sysfs:file { rw_file_perms };
+allow ccci_mdinit nvram_data_file:file { create setattr rw_file_perms };
+allow ccci_mdinit property_socket:sock_file { rw_file_perms };
+allow ccci_mdinit init:unix_stream_socket connectto;
+allow ccci_mdinit ctl_default_prop:property_service set;
+allow ccci_mdinit ctl_rildaemon_prop:property_service set;

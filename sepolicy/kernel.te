@@ -1,0 +1,7 @@
+allow kernel sysfs_gpsdrv:lnk_file relabelto;
+allow kernel sysfs_msensord_daemon_file:file relabelto;
+allow kernel sysfs_sensor_file:dir relabelto;
+allow kernel sysfs_sensor_file:file relabelto;
+allow kernel sysfs_sensor_file:lnk_file relabelto;
+allow kernel nvram_data_file:dir search;
+allow kernel nvram_data_file:file { open read write };

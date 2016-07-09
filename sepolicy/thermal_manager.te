@@ -1,0 +1,7 @@
+type thermal_manager, domain;
+type thermal_manager_exec, exec_type, file_type;
+
+init_daemon_domain(thermal_manager)
+allow thermal_manager thermal_manager_exec:file { read open getattr execute execute_no_trans};
+allow thermal_manager oemfs:dir search;
+allow thermal_manager proc:file write;

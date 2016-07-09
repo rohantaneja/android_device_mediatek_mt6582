@@ -1,0 +1,10 @@
+type conn_launcher, domain;
+type conn_launcher_exec, exec_type, file_type;
+
+init_daemon_domain(conn_launcher)
+allow conn_launcher conn_launcher_exec:file { read open getattr execute execute_no_trans};
+allow conn_launcher stpwmt_device:chr_file { open read write ioctl};
+allow conn_launcher property_socket:sock_file { open read write };
+allow conn_launcher init:unix_stream_socket connectto;
+allow conn_launcher wcn_combo_chip_prop:property_service set;
+

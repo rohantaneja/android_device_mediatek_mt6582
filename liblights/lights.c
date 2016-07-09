@@ -8,9 +8,49 @@
  * information contained herein, in whole or in part, shall be strictly
  * prohibited.
  * 
- * MediaTek Inc. (C) 2016. All rights reserved.
+ * MediaTek Inc. (C) 2010. All rights reserved.
  * 
+ * BY OPENING THIS FILE, RECEIVER HEREBY UNEQUIVOCALLY ACKNOWLEDGES AND AGREES
+ * THAT THE SOFTWARE/FIRMWARE AND ITS DOCUMENTATIONS ("MEDIATEK SOFTWARE")
+ * RECEIVED FROM MEDIATEK AND/OR ITS REPRESENTATIVES ARE PROVIDED TO RECEIVER
+ * ON AN "AS-IS" BASIS ONLY. MEDIATEK EXPRESSLY DISCLAIMS ANY AND ALL
+ * WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR
+ * NONINFRINGEMENT. NEITHER DOES MEDIATEK PROVIDE ANY WARRANTY WHATSOEVER WITH
+ * RESPECT TO THE SOFTWARE OF ANY THIRD PARTY WHICH MAY BE USED BY,
+ * INCORPORATED IN, OR SUPPLIED WITH THE MEDIATEK SOFTWARE, AND RECEIVER AGREES
+ * TO LOOK ONLY TO SUCH THIRD PARTY FOR ANY WARRANTY CLAIM RELATING THERETO.
+ * RECEIVER EXPRESSLY ACKNOWLEDGES THAT IT IS RECEIVER'S SOLE RESPONSIBILITY TO
+ * OBTAIN FROM ANY THIRD PARTY ALL PROPER LICENSES CONTAINED IN MEDIATEK
+ * SOFTWARE. MEDIATEK SHALL ALSO NOT BE RESPONSIBLE FOR ANY MEDIATEK SOFTWARE
+ * RELEASES MADE TO RECEIVER'S SPECIFICATION OR TO CONFORM TO A PARTICULAR
+ * STANDARD OR OPEN FORUM. RECEIVER'S SOLE AND EXCLUSIVE REMEDY AND MEDIATEK'S
+ * ENTIRE AND CUMULATIVE LIABILITY WITH RESPECT TO THE MEDIATEK SOFTWARE
+ * RELEASED HEREUNDER WILL BE, AT MEDIATEK'S OPTION, TO REVISE OR REPLACE THE
+ * MEDIATEK SOFTWARE AT ISSUE, OR REFUND ANY SOFTWARE LICENSE FEES OR SERVICE
+ * CHARGE PAID BY RECEIVER TO MEDIATEK FOR SUCH MEDIATEK SOFTWARE AT ISSUE.
+ *
+ * The following software/firmware and/or related documentation ("MediaTek
+ * Software") have been modified by MediaTek Inc. All revisions are subject to
+ * any receiver's applicable license agreements with MediaTek Inc.
  */
+
+/*
+ * Copyright (C) 2008 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #define LOG_TAG "lights"
 
@@ -62,16 +102,16 @@ char const*const RED_DELAY_OFF_FILE
 
 /* GREEN LED */
 char const*const GREEN_LED_FILE
-        = "/sys/class/leds/green/brightness";
+        = "/sys/class/leds/greenled/brightness";
 
 char const*const GREEN_TRIGGER_FILE
-        = "/sys/class/leds/green/trigger";
+        = "/sys/class/leds/greenled/trigger";
 
 char const*const GREEN_DELAY_ON_FILE
-        = "/sys/class/leds/green/delay_on";
+        = "/sys/class/leds/greenled/delay_on";
 
 char const*const GREEN_DELAY_OFF_FILE
-        = "/sys/class/leds/green/delay_off";
+        = "/sys/class/leds/greenled/delay_off";
 
 /* BLUE LED */
 char const*const BLUE_LED_FILE
@@ -301,6 +341,7 @@ blink_blue(int level, int onMS, int offMS)
 		write_str(BLUE_TRIGGER_FILE, "timer");
 		while (((access(BLUE_DELAY_OFF_FILE, F_OK) == -1) || (access(BLUE_DELAY_OFF_FILE, R_OK|W_OK) == -1)) && i<10) {
 			ALOGD("BLUE_DELAY_OFF_FILE doesn't exist or cannot write!!\n");
+			led_wait_delay(5);//sleep 5ms for wait kernel LED class create led delay_off/delay_on node of fs
 			i++;
 		}
 		write_int(BLUE_DELAY_OFF_FILE, offMS);
@@ -422,25 +463,18 @@ set_speaker_light_locked(struct light_device_t* dev,
     	red = green = blue = 0;
     }
 
+    blink_red(0, 0, 0);
+    blink_green(0, 0, 0);
+    blink_blue(0, 0, 0);
+
     if (red) {
-        blink_green(0, 0, 0);
-        blink_blue(0, 0, 0);
         blink_red(red, onMS, offMS);
     }
-    else if (green) {
-        blink_red(0, 0, 0);
-        blink_blue(0, 0, 0);
+    if (green) {
         blink_green(green, onMS, offMS);
     }
-    else if (blue) {
-        blink_red(0, 0, 0);
-        blink_green(0, 0, 0);
+    if (blue) {
         blink_blue(blue, onMS, offMS);
-    }
-    else {
-        blink_red(0, 0, 0);
-        blink_green(0, 0, 0);
-        blink_blue(0, 0, 0);
     }
 
     return 0;

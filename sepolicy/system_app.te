@@ -1,0 +1,3 @@
+allow system_app init:unix_dgram_socket write;
+allow system_app init_tmpfs:file read;
+allow system_app fm_device:chr_file { rw_file_perms };

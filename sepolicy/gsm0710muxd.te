@@ -1,0 +1,14 @@
+type gsm0710muxd, domain;
+type gsm0710muxd_exec, exec_type, file_type;
+
+init_daemon_domain(gsm0710muxd)
+allow gsm0710muxd gsm0710muxd_exec:file { read open getattr execute execute_no_trans};
+allow gsm0710muxd gsm0710muxd_device:chr_file { rw_file_perms };
+allow gsm0710muxd devpts:chr_file { setattr rw_file_perms };
+allow gsm0710muxd radio_device:dir rw_dir_perms;
+allow gsm0710muxd radio_device:lnk_file { create relabelto read };
+allow gsm0710muxd self:capability { setuid fowner chown };
+allow gsm0710muxd property_socket:sock_file { create unlink setattr write };
+allow gsm0710muxd init:unix_stream_socket connectto;
+allow gsm0710muxd ctl_rildaemon_prop:property_service set;
+allow gsm0710muxd radio_device:lnk_file { create unlink setattr rw_file_perms };

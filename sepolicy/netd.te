@@ -1,3 +1,7 @@
 # Let netd access the interface
 allow netd wmtWifi_device:chr_file write;
 allow netd wmtWifi_device:chr_file open;
+allow netd init:tcp_socket { read write setopt getopt };
+allow netd self:capability fsetid;
+allow netd mtk_agpsd:fd use;
+allow netd mtk_agpsd:tcp_socket { setopt getopt read write };

@@ -1,0 +1,5 @@
+allow surfaceflinger sw_sync_device:chr_file { read write ioctl open };
+allow surfaceflinger hwc_prop:property_service set;
+
+# 2016-6-10 added by ferhung
+allow surfaceflinger self:capability ipc_lock;
