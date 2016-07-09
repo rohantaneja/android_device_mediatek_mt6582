@@ -34,5 +34,7 @@ This branch is for building 6.0.x based ROMs.
         # ariafan
         
         # DerTeufel
-        
+
+        # xen0n
+
         # all those who initially brought up Android M to MTK

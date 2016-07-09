@@ -204,8 +204,8 @@ on post-fs-data
     # GPS
     mkdir /data/agps_supl 0771 gps system
     mkdir /data/gps_mnl 0771 gps system
-    mkdir /data/misc/gps 0770 gps gps
 
+    mkdir /data/misc/gps 0770 gps gps
 # -----------------------
 # Add by MTK
 
@@ -374,6 +374,8 @@ on post-fs-data
     chmod 0660 /dev/Vcodec
     chown media media /dev/Vcodec
 
+    insmod /system/lib/modules/bma2xx.ko
+
     #kpd
     chown radio radio /sys/devices/platform/mtk-kpd/driver/kpd_call_state
 
@@ -527,9 +529,7 @@ on post-fs-data
     #sbchk
     mkdir /data/sec 0750 system system
 
-
     exec 0666 /system/xbin/autosanity
-
 
 #
 # Connectivity related device nodes & configuration (begin)
@@ -599,13 +599,13 @@ on boot
     chown radio system /sys/power/tuxonice
     chown radio system /sys/power/tuxonice/do_hibernate
     chmod 0770 /sys/power/tuxonice
-    chmod 0220 /sys/power/tuxonice/do_hibernate	
-	
+    chmod 0220 /sys/power/tuxonice/do_hibernate
+
     # FM Radio device node
     exec /system/bin/mknod /dev/fm c 193 0
     chmod 0777 /dev/fm
     chown system media /dev/fm
-	
+
 ## Thermal
   #change permissions on thermal devices
   chown root system /proc/mtktscpu/mtktscpu
@@ -683,7 +683,7 @@ on property:vold.decrypt=trigger_restart_framework
     start nvram_daemon
     start start_modem
     start msensord
-    
+
 on property:vold.decrypt=trigger_shutdown_framework
     start stop_modem
 
@@ -741,7 +741,6 @@ service audio-daemon /system/bin/audiocmdservice_atci
     disabled
     oneshot
 
-
 service insmod insmod
     disabled
     oneshot
@@ -788,7 +787,6 @@ service wpa_supplicant /system/bin/wpa_supplicant -dd \
     socket wpa_wlan0 dgram 660 wifi wifi
     disabled
     oneshot
-
 
 service dhcpcd_bt-pan /system/bin/dhcpcd -A -BK -dd
     class main
@@ -874,6 +872,12 @@ service msensord /system/bin/msensord
     class main
     oneshot
 
+service s62xd /system/bin/s62xd
+    disabled
+    user compass
+    group system
+    class main
+
 service ami304d /system/bin/ami304d
     user system
     group system
@@ -881,10 +885,18 @@ service ami304d /system/bin/ami304d
     oneshot
 
 service memsicd /system/bin/memsicd
-     disabled
-     oneshot
+    disabled
+    oneshot
     user system
     group system
+    class main
+
+service memsicd3416x /system/bin/memsicd3416x
+    disabled
+    user system
+    group system
+    class main
+    oneshot
 
 service akmd8975 /system/bin/akmd8975
     disabled
@@ -910,6 +922,13 @@ service mc6420d /system/bin/mc6420d
     disabled
     user system
     group system
+    class main
+
+service qmc5983d /system/bin/qmc5983d
+    disabled
+    user system
+    group system
+    class main
 
 service orientationd /system/bin/orientationd
     disabled
@@ -956,7 +975,6 @@ service thermal_manager /system/bin/thermal_manager
 
 service battery_charger /charger
     class charger
-    critical
     seclabel u:r:healthd:s0
 #
 # Connectivity related services (Begin)
@@ -980,3 +998,5 @@ service conn_launcher /system/bin/logwrapper /system/bin/6620_launcher -p /syste
 service enableswap /system/bin/sh /enableswap.sh
     class core
     oneshot	
+
+

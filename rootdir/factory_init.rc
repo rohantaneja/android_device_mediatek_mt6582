@@ -243,6 +243,7 @@ on post-fs-data
     chmod 0444 /dev/M4U_device
 
     # Sensor
+    insmod /system/lib/modules/bma2xx.ko
     chmod 0660 /dev/hwmsensor
     chmod 0660 /dev/gyroscope
     chmod 0660 /dev/msensor

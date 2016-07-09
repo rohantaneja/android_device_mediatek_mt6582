@@ -3,5 +3,3 @@ on post-fs-data
   mkdir /storage/sdcard1 0700 root root
 
   start adbd
-
-

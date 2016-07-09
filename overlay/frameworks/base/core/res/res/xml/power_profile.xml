@@ -1,36 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <device name="Android">
     <item name="none">0</item>
-    <item name="screen.on">120</item>
-    <item name="screen.full">250</item>
-    <item name="bluetooth.active">20</item>
-    <item name="bluetooth.on">0.5</item>
-    <item name="wifi.on">1.0</item>
-    <item name="wifi.active">25</item>
-    <item name="wifi.scan">6</item>
-    <item name="dsp.audio">15</item>
-    <item name="dsp.video">60</item>
-    <item name="radio.active">80</item>
-    <item name="radio.scanning">85</item>
-    <item name="gps.on">45</item>
+    <item name="screen.on">71</item>
+    <item name="screen.full">380</item>
+    <item name="bluetooth.active">17</item>
+    <item name="bluetooth.on">0.3</item>
+    <item name="wifi.on">0.3</item>
+    <item name="wifi.active">96</item>
+    <item name="wifi.scan">70</item>
+    <item name="dsp.audio">44</item>
+    <item name="dsp.video">280</item>
+    <item name="radio.active">250</item>
+    <item name="radio.scanning">82</item>
+    <item name="gps.on">1</item>
     <array name="radio.on">
-        <value>1.5</value>
-        <value>1.5</value>
+        <value>3.4</value>
+        <value>3.4</value>
     </array>
     <array name="cpu.speeds">
-        <value>1209000</value>
-        <value>988000</value>
-        <value>754000</value>
-        <value>497250</value>
+        <value>1300000</value>
+        <value>1196000</value>
+        <value>1040000</value>
+        <value>747500</value>
+        <value>598000</value>
     </array>
-    <item name="cpu.idle">2.0</item>
+    <item name="cpu.idle">2.1</item>
     <array name="cpu.active">
-        <value>120</value>
-        <value>98</value>
-        <value>75</value>
-        <value>49</value>
+        <value>398</value>
+        <value>286</value>
+        <value>217</value>
+        <value>185</value>
+        <value>119</value>
     </array>
-    <item name="battery.capacity">1728</item>
+    <item name="battery.capacity">2000</item>
     <array name="wifi.batchedscan">
         <value>.0002</value>
         <value>.002</value>
