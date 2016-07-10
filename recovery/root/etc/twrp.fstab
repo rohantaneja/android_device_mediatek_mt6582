@@ -1,11 +1,11 @@
 # mount point	fstype           device    	[device2]
-/misc           emmc             /dev/misc                      flags=display="Misc"
-/boot           emmc             /dev/bootimg
-/recovery       emmc             /dev/recovery                  flags=display="Recovery";backup=1
-/system         ext4             /dev/block/mmcblk0p6
-/cache          ext4             /dev/block/mmcblk0p7
-/data           ext4             /dev/block/mmcblk0p8
-/external_sd    vfat             /dev/block/mmcblk1p1           flags=canbewiped;wipeingui;storage;removable;display="External SD-card"
-/nvram          emmc             /dev/nvram                     flags=display="Nvram";backup=1
-/uboot          emmc             /dev/uboot                     flags=display="Uboot";backup=1
-/logo           emmc             /dev/logo                      flags=display="Logo";backup=1
+/misc                      emmc             /dev/misc		       			     flags=display="misc"
+/boot                       emmc            /dev/bootimg                                        flags=display="boot"
+/recovery                emmc            /dev/recovery                                        flags=display="recovery";backup=1
+/system                  ext4                /dev/block/mmcblk0p5                        flags=display="system"
+/cache                    ext4                 /emmc@cache                                     flags=display="cache"
+/data                      ext4                 /emmc@usrdata                                  flags=storagename="Internal Storage";backupnamedata
+/external_sd           vfat                /dev/block/mmcblk1p1                        /dev/block/mmcblk1
+/nvram                   emmc             /dev/nvram                                           flags=display="nvram";backup=1
+/uboot                    emmc             /dev/uboot                                            flags=display="uboot";backup=1
+/logo                       emmc             /dev/logo                                               flags=display="logo";backup=1

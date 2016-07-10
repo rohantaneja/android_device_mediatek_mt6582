@@ -84,11 +84,11 @@ PRODUCT_PACKAGES += \
     ueventd.mt6582.rc \
     init.mt6582.usb.rc \
     enableswap.sh \
-    factory_init.rc \
-    twrp.fstab
+    factory_init.rc 
 
 # Kernel
 PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/recovery/root/etc/twrp.fstab:recovery/root/etc/twrp.fstab \
     $(LOCAL_KERNEL):kernel
 
 # Permissions
