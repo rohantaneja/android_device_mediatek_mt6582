@@ -93,7 +93,7 @@ on late-init
 # mount different fs start
 on fs
     write /proc/bootprof "INIT:eMMC:Mount_All_START"
-    mount_all /fstab.sprout
+    mount_all /fstab.mt6582
     write /proc/bootprof "INIT:eMMC:Mount_All_END"
 
     #for SD card with partition(s), always mount the 1st
